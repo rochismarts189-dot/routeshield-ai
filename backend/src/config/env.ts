@@ -14,8 +14,10 @@ export const envSchema = z.object({
   JWT_SECRET: optionalSetting,
   JWT_ISSUER: z.string().default('routeshield-api'),
   JWT_AUDIENCE: z.string().default('routeshield-web'),
+  GOOGLE_MAPS_SERVER_API_KEY: optionalSetting,
   GEMINI_API_KEY: optionalSetting,
-  GEMINI_MODEL: z.string().trim().min(1).default('gemini-3.8-flash'),
+  GEMINI_MODEL: z.string().trim().min(1).default('gemini-3.5-flash-lite'),
+  GEMINI_FALLBACK_MODEL: z.string().trim().min(1).default('gemini-3.5-flash-lite'),
   SUPABASE_URL: optionalSetting, SUPABASE_SECRET_KEY: optionalSetting,
   SUPABASE_STORAGE_BUCKET: z.string().default('evidence'),
 }).superRefine((data, ctx) => {

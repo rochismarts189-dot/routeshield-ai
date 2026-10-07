@@ -36,7 +36,7 @@ Render environment:
 | `DATABASE_CA_CERT_BASE64` | Project CA when required for verified TLS |
 | `JWT_SECRET` | At least 32 random bytes; blueprint can generate it |
 | `GEMINI_API_KEY` | Real Google AI Studio key |
-| `GEMINI_MODEL` | `gemini-3.8-flash`, or an available image + structured-output model for your account |
+| `GEMINI_MODEL` | `gemini-3.5-flash-lite`, or an available image + structured-output model for your account |
 | `SUPABASE_URL` | Project API URL |
 | `SUPABASE_SECRET_KEY` | Backend-only secret/service-role key |
 | `SUPABASE_STORAGE_BUCKET` | `evidence` |

@@ -1,10 +1,11 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Shield, Navigation, Camera, LogOut, Layers, ArrowUpRight, Info } from 'lucide-react';
+import { Shield, Navigation, Camera, LogOut, Layers, ArrowUpRight, Info, Globe2 } from 'lucide-react';
 
 const navigation = [
-  { path: '/plan', label: 'Route Planner', icon: Navigation },
+  { path: '/plan', label: 'Maple Ward Demo', icon: Navigation },
+  { path: '/navigate', label: 'Real Navigation', icon: Globe2 },
   { path: '/incidents', label: 'Incidents', icon: Layers },
   { path: '/report', label: 'Report Obstruction', icon: Camera },
 ];
@@ -32,7 +33,7 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
           </div>
         </div>
       </header>
-      <div className="border-b border-slate-800/70 bg-slate-900/50" role="region" aria-label="Fictional demonstration network disclaimer"><div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs text-slate-300"><span className="flex items-center gap-2"><Info className="w-3.5 h-3.5 text-emerald-300 shrink-0" aria-hidden="true" /><strong className="font-medium">Fictional demonstration network — not live navigation.</strong></span><span className="text-slate-400">Step-free is a planning preference, not a wheelchair safety certification.</span></div></div>
+      <div className="border-b border-slate-800/70 bg-slate-900/50" role="region" aria-label="Fictional demonstration network disclaimer"><div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs text-slate-300"><span className="flex items-center gap-2"><Info className="w-3.5 h-3.5 text-emerald-300 shrink-0" aria-hidden="true" /><strong className="font-medium">{pathname === '/navigate' ? 'Google walking routes · step-free access unverified.' : 'Fictional demonstration network — not live navigation.'}</strong></span><span className="text-slate-400">Step-free is a planning preference, not a wheelchair safety certification.</span></div></div>
       <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">{children}</main>
       <footer className="border-t border-slate-800/70 py-6 text-sm text-slate-400"><div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-wrap items-center justify-between gap-3"><p className="flex items-center gap-2"><Shield className="w-4 h-4 text-emerald-300" aria-hidden="true" /><span>Community evidence. Clearer journeys.</span></p><p className="text-xs">AI for Accessibility &amp; Inclusion · Maple Ward demo</p></div></footer>
     </div>

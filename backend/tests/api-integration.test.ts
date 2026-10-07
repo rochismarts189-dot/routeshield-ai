@@ -58,7 +58,7 @@ async function plan(profile = 'STEP_FREE') { return http('/routes/plan', 'POST',
 
 beforeAll(async () => {
   state.db = new PGlite();
-  for (const name of ['0001_init.sql', '0002_demo_network.sql']) await state.db.exec(readFileSync(resolve('../supabase/migrations', name), 'utf8'));
+  for (const name of ['0001_init.sql', '0002_demo_network.sql', '0003_real_navigation.sql']) await state.db.exec(readFileSync(resolve('../supabase/migrations', name), 'utf8'));
   server = await new Promise<Server>(resolveServer => { const s = app.listen(0, '127.0.0.1', () => resolveServer(s)); });
   base = `http://127.0.0.1:${(server.address() as any).port}`;
 }, 20000);
@@ -141,4 +141,35 @@ describe('Express + PostgreSQL migration integration', () => {
     const result = await plan(); expect(result.status).toBe(200); expect(result.data.status).toBe('NO_ROUTE'); expect(result.data.route).toBeNull();
     expect((await plan('GENERAL_WALK')).data.route.distanceMeters).toBe(620);
   });
+  it('isolates real-location evidence from Maple Ward, corroborates and enforces verified reopening', async () => {
+    const one = await register('real-one'); const two = await register('real-two');
+    async function realUpload(token: string, claim = 'BLOCKED', incidentId?: string) {
+      const bytes = await sharp({ create: { width: 16, height: 16, channels: 3, background: { r: ++color * 12, g: 32, b: 12 } } }).jpeg().toBuffer();
+      const form = new FormData(); form.set('photo', new Blob([new Uint8Array(bytes)], {type:'image/jpeg'}), 'isolated-test.jpg');
+      form.set('label','Isolated test location'); form.set('latitude','17.7'); form.set('longitude','83.3');
+      form.set('claim',claim); form.set('observedAt',new Date().toISOString()); if (incidentId) form.set('incidentId',incidentId);
+      return http('/navigation/reports','POST',form,token);
+    }
+    expect((await http('/navigation/plan','POST',{origin:'origin',destination:'destination'})).status).toBe(401);
+    expect((await http('/navigation/status')).data.configured).toBe(false);
+    const first = await realUpload(one.token); expect(first.status).toBe(201); expect(first.data.incidentStatus).toBe('UNVERIFIED');
+    const second = await realUpload(two.token); expect(second.data.incidentId).toBe(first.data.incidentId); expect(second.data.incidentStatus).toBe('CONFIRMED_BLOCKED');
+    expect((await plan()).data.route.distanceMeters).toBe(460);
+    expect((await http('/incidents')).data.incidents).toHaveLength(0);
+    const real = (await http('/navigation/incidents')).data.incidents; expect(real).toHaveLength(1); expect(real[0].lat).toBe(17.7);
+    const hash = await hashPassword('real-test-moderator-123');
+    await state.db.query("INSERT INTO routeshield.users(email,display_name,password_hash,role) VALUES($1,$2,$3,'MODERATOR')",['realmod@example.test','Real moderator',hash]);
+    const mod = (await http('/auth/login','POST',{email:'realmod@example.test',password:'real-test-moderator-123'})).data;
+    state.analysis = clear;
+    const clearance = await realUpload(two.token,'CLEAR',real[0].id);
+    let detail = (await http(`/navigation/incidents/${real[0].id}`,'GET',undefined,one.token)).data.incident;
+    expect(detail.disputed).toBe(true); expect(detail.status).toBe('CONFIRMED_BLOCKED');
+    const payload = {action:'CLEAR',expectedVersion:detail.version,evidenceReportId:clearance.data.reportId,reason:'Isolated test full-path review',attestation:true};
+    expect((await http(`/navigation/incidents/${real[0].id}/verify`,'POST',payload,one.token)).status).toBe(403);
+    expect((await http(`/navigation/incidents/${real[0].id}/verify`,'POST',{...payload,attestation:false},mod.token)).status).toBe(400);
+    expect((await http(`/navigation/incidents/${real[0].id}/verify`,'POST',payload,mod.token)).status).toBe(200);
+    expect((await http('/navigation/incidents')).data.incidents).toHaveLength(0);
+    expect((await plan()).data.route.distanceMeters).toBe(460);
+  });
+
 });

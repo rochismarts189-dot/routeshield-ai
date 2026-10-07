@@ -1,3 +1,4 @@
+import type { RealPlan, RealIncident, RealIncidentDetail, RealAnalysisResult } from '../types/navigation';
 import {
   Node,
   Edge,
@@ -91,6 +92,13 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
+  navigationStatus: () => request<{ configured: boolean }>('/api/navigation/status'),
+  planRealRoute: (origin: string, destination: string) => request<RealPlan>('/api/navigation/plan', { method: 'POST', body: JSON.stringify({ origin, destination }) }),
+  getRealIncidents: () => request<{ incidents: RealIncident[] }>('/api/navigation/incidents'),
+  getRealIncident: (id: string) => request<{ incident: RealIncidentDetail }>(`/api/navigation/incidents/${id}`),
+  submitRealReport: (body: FormData) => request<RealAnalysisResult>('/api/navigation/reports', { method: 'POST', body }),
+  retryRealAnalysis: (id: string) => request<RealAnalysisResult>(`/api/navigation/reports/${id}/retry-analysis`, { method: 'POST' }),
+  verifyRealIncident: (id: string, body: { action: 'CONFIRM_BLOCKED' | 'CLEAR' | 'DISMISS'; evidenceReportId?: string; blockedProfiles?: ('GENERAL_WALK' | 'STEP_FREE')[]; expectedVersion: number; attestation?: boolean; reason: string }) => request(`/api/navigation/incidents/${id}/verify`, { method: 'POST', body: JSON.stringify(body) }),
   // Public
   getHealth: () => request<{ status: string }>('/api/health'),
   getNetwork: () => request<{ nodes: Node[]; edges: Edge[] }>('/api/network'),

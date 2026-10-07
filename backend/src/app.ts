@@ -11,6 +11,7 @@ import networkRoutes from './routes/network.js';
 import reportRoutes from './routes/reports.js';
 import incidentRoutes from './routes/incidents.js';
 import routeRoutes from './routes/routes.js';
+import realNavigationRoutes from './navigation/router.js';
 
 export const app = express();
 
@@ -69,6 +70,7 @@ app.use('/api/network', networkRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/incidents', incidentRoutes);
 app.use('/api/routes', routeRoutes);
+app.use('/api/navigation', realNavigationRoutes);
 
 app.use((_req: Request, res: Response) => res.status(404).json({ error: { code: 'NOT_FOUND', message: 'API endpoint not found' } }));
 

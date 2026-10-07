@@ -19,3 +19,9 @@ For the live hackathon flow, use your own authorized photographs of a staged obs
 This is a real photograph, but it is **not a current observation in Maple Ward**. Any association with segment B-C is an explicitly fictional demo mapping; an observation time entered during a demo is simulated. Keep that provenance in the report description and the presentation. The existing illustration files do not become qualifying photographic evidence merely because this photograph has been added. Do not manufacture a second independent report by cropping or re-encoding this same image.
 
 Use only the actual validated Gemini response. Whether it supports blocking either profile is decided by the existing incident policy, not by the fixture filename or this description. This fixture does not establish whole-segment clearance or justify reopening.
+
+## Additional genuine photograph for live Gemini verification
+
+`fallen-tree-esk.jpg` is **Fallen tree blocking the path, by the Esk**, photographed on 26 May 2009 by **Nigel Chadwick**, sourced from [Geograph photograph 1333466](https://www.geograph.org.uk/photo/1333466) via [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Fallen_tree_blocking_the_path,_by_the_Esk_-_geograph.org.uk_-_1333466.jpg). License: [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/). Downloaded original, no content edits; the normal upload pipeline strips metadata and normalizes JPEGs.
+
+This is historical evidence, **not a current real-location report**. For a controlled Maple Ward test its segment assignment and observation timestamp are explicitly simulated. Do not submit it to Real Navigation as current evidence or treat different historical photographs as independent witnesses to the same real obstruction. A Gemini result must come from actual inference; this file does not contain a predetermined analysis.

@@ -1,27 +1,21 @@
 # Verification status — 7 October 2026
 
-## Passed
+## Verified in this update
 
-- Backend TypeScript production build on Node 22.22.0; strict checking retained.
-- Backend: 30 automated tests, including authentication boundaries, evidence policy, Gemini response validation, verified TLS configuration, exact CORS and HTTP integration.
-- Deterministic routing expectations: 460m baseline; B-C blocked general 620m; B-C blocked step-free 740m; B-C plus G-H blocked step-free NO_ROUTE; clearing restores 460m.
-- Frontend production build and 12 tests, including warning/alternative presentation, unverified distinction, precautionary avoidance, NO_ROUTE, cleared/dismissed incidents and stale-route prevention.
-- Real Supabase connection with its official CA and certificate verification enabled; migrations applied; 8 nodes / 10 edges; evidence bucket verified private.
-- Render HTTPS health/readiness and production network endpoints.
-- Public Vercel deployment and browser rendering; Vercel-origin request to Render returns the network with exact matching CORS.
-- Production registration, bcrypt login, JWT identity check, invalid-token rejection and rejection of registration role escalation.
-- Image upload persisted in private storage and an incident created for the submitted segment. Failed AI analysis is stored as FAILED and is not substituted with an invented result.
+- Strict backend and frontend TypeScript production builds; no compiler checks disabled.
+- Backend: 37 automated tests, including all original authentication, TLS, evidence, reopening and deterministic routing checks, plus Google request validation, real polyline decoding, warning-only reports, returned-alternative selection, no-alternative behavior, real/demo data isolation and real incident verification.
+- Frontend: 16 tests, including the original obstruction-first demo plus optional-mode configuration failure, provider failure, no invented alternatives and stale Google response prevention.
+- Maple Ward routing expectations remain: 460 m baseline; B-C blocked general 620 m; B-C blocked step-free 740 m; B-C + G-H step-free NO_ROUTE; clearing restores 460 m.
+- Supabase migrations 0001–0003 applied successfully over verified TLS. Maple Ward remains 8 nodes / 10 edges. New real incident/report/event tables start empty; no fictional geographic data is imported.
+- **Actual image inference succeeded** with `gemini-3.5-flash-lite`: the normalized licensed historical obstruction photograph returned schema-validated FALLEN_OBJECT / HIGH / FULL_WIDTH analysis and concrete observations. This is a live SDK check, not a mocked response.
+- A bounded transient-error model fallback uses the same lifetime attempt budget and records the actual model that responds. No AI results, routes, confirmation or clearance are invented.
 
-## Live AI check remains blocked
+## Production checks still required before claiming completion
 
-The configured `gemini-2.5-flash` model returned HTTP 404 for this account. Replacement model `gemini-3.8-flash` is configured; Google's official documentation supports image input and structured outputs. Actual image requests returned HTTP 503 / UNAVAILABLE (“high demand”), including a normalized real licensed obstruction photograph. Other available model checks also returned 503. A production Render upload of the real photograph failed with provider statuses 503 and then 504, confirmed in Render logs. The image nevertheless persisted in private storage, reconciled into B-C's active incident and was rejected as a duplicate on resubmission. Signed image access returned 200; unsigned public-bucket access was denied. Both routing profiles returned the 460m baseline with an explicit unverified B-C warning, without inventing a confirmed block or detour.
+The preceding production deployment passed HTTPS health/readiness, database/private bucket checks, Vercel→Render CORS, bcrypt/JWT authentication, image persistence, incident reconciliation, duplicate rejection and signed evidence access. Its `gemini-3.8-flash` requests failed with provider 503/504/timeouts; the historic photograph remained unverified, with the correct 460 m route and reported-obstruction warning.
 
-Consequently, **successful live image analysis and the complete production obstruction → confirmed incident → alternative route demonstration have not passed yet**. Automated policy and route tests are not a substitute for that check. Do not claim the application is completely verified until an actual provider response passes validation, persists and supports the required verification action.
+This update must be deployed and its **production** image upload/inference/incident/route flow verified separately. A successful direct model check and automated fixtures are not substitutes for that deployed flow.
 
-The licensed historical photograph's provenance is in `demo/fixtures/provenance.md`; it is not a current Maple Ward observation. Reopening still requires actual qualifying clear evidence and authorized whole-segment attestation. Do not relax policy to make the demo pass.
+Google Cloud project `routeshield-ai` is selected and the account owner approved enabling Maps JavaScript + Routes and creating restricted keys. Google's Enable action redirected to billing/card verification. Account-owner billing completion is pending. **Maps APIs/keys, real browser map loading and live Google routing are not yet claimed verified.** See [Google Maps setup](google-maps-setup.md).
 
-The final production retry after commit `ffb11f1` also failed with `TIMEOUT`, using `gemini-3.8-flash`; the report stayed UNVERIFIED and both profiles retained the 460m route with a before-travel warning. Render and Vercel deployed that commit successfully, and the public browser showed the actual unverified status and photo-evidence link.
-
-## Optional Google Maps preparation
-
-Credential templates, account-owner instructions and an opt-in `npm run maps:check` command are prepared in `docs/google-maps-setup.md`. The check correctly stops without a provider request when credentials/addresses are missing. No Maps keys were created, billing was not configured, and live Maps requests have not been verified. Real navigation and real-location incident matching remain unimplemented; Maple Ward is preserved. Both builds and the existing 30 backend / 12 frontend tests passed again after setup preparation.
+The historical fixtures are permitted only for explicitly labelled fictional Maple Ward tests; do not submit them as current real-location obstruction reports. Reopening remains evidence-gated and requires an authorized whole-segment attestation.

@@ -40,7 +40,9 @@ export async function analyzeEvidencePhoto(
   }
 
   const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
-  const modelName = env.GEMINI_MODEL || 'gemini-3.8-flash';
+  const primaryModel = env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
+  const fallbackModel = env.GEMINI_FALLBACK_MODEL || 'gemini-3.5-flash-lite';
+  let modelName = primaryModel;
 
   const userPrompt = JSON.stringify({ selectedSegment: params.edgeLabel, reporterClaim: params.claim, description: params.description });
 
@@ -48,6 +50,10 @@ export async function analyzeEvidencePhoto(
   let lastError: (Error & { status?: number }) | null = null;
   for (let attempt = 1; attempt <= Math.min(params.maxAttempts ?? 2, 2); attempt++) {
     try {
+      // A transient provider outage can use the verified image-capable fallback.
+      // It consumes the same bounded lifetime attempt budget and still requires
+      // a real provider response and all schema/semantic validation.
+      if (attempt > 1 && lastError && ([503, 504].includes(lastError.status ?? 0) || ['TimeoutError', 'AbortError'].includes(lastError.name) || lastError.message.includes('timed out'))) modelName = fallbackModel;
       await params.beforeAttempt?.();
       const response = await ai.models.generateContent({
         model: modelName,

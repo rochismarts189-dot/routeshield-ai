@@ -170,3 +170,8 @@ Production startup requires real backend configuration. `/api/health` is livenes
 The two deployment origins are separate: Render hosts the API, Vercel hosts the public demo. `VITE_API_BASE_URL` must contain Render’s actual origin at build time. `FRONTEND_URL` must contain Vercel’s exact origin. No secrets belong in a `VITE_*` variable. Sessions are held in memory, so refreshing the page requires signing in again.
 
 Local port 5001 avoids macOS AirPlay’s use of port 5000. Missing database/storage settings produce explicit errors; there is no local persistence fallback. Generated database files are ignored.
+
+
+### Optional real navigation
+
+`/navigate` adds Google walking routes and checks real-location community reports. It is independent of the Maple Ward demonstration. Configure the restricted browser key on Vercel and restricted Routes key on Render following [Google Maps setup](docs/google-maps-setup.md), apply migration `0003_real_navigation.sql`, and use public landmarks for verification. Real Google walking routes have **unverified step-free access**; the controlled `STEP_FREE` demo remains `/plan`. If Google provides no unaffected candidate, RouteShield says so and never invents a detour. Billing and live provider verification are separate from successful builds/tests.

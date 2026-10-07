@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider } from '../context/AuthContext';
 import { AppShell } from '../components/AppShell';
@@ -7,6 +7,7 @@ import { ReportPage } from '../pages/ReportPage';
 import { IncidentsPage } from '../pages/IncidentsPage';
 import { IncidentPage } from '../pages/IncidentPage';
 import { AuthPage } from '../pages/AuthPage';
+const RealNavigationPage = lazy(() => import('../pages/RealNavigationPage').then(module => ({ default: module.RealNavigationPage })));
 
 const RootLayout: React.FC = () => {
   return (
@@ -31,6 +32,7 @@ export const router = createBrowserRouter([
         path: 'plan',
         element: <PlannerPage />,
       },
+      { path: 'navigate', element: <Suspense fallback={<p role="status">Loading optional real navigation…</p>}><RealNavigationPage /></Suspense> },
       {
         path: 'report',
         element: <ReportPage />,

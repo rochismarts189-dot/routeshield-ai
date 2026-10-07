@@ -2,19 +2,21 @@
 
 ## Current status
 
-The current application remains the working Maple Ward demonstration. This setup adds credential templates and an **opt-in server credential check**; it does not claim that Google navigation, real-location reporting or obstruction-aware real routes are implemented. The current report schema accepts only curated segment IDs and derives its coordinates from fictional segment endpoints. Those incidents must never be overlaid on a real city map as real observations.
+The optional `/navigate` page and authenticated `/api/navigation/plan` endpoint are implemented alongside the existing Maple Ward demo. Google supplies real walking routes and alternatives; deterministic geometry code checks actual real-location community incidents. Real reports, incidents and audit events live in separate `routeshield.real_*` tables. **No fictional coordinates or incidents are imported into real navigation.** Migrate with `npm run migrate` from `backend` before deployment.
 
-No Maps credentials were found in the local configuration. Google Cloud project selection, enabled APIs and billing have not been verified. No billing account was linked and no API keys were created by this change. Existing Gemini, database, authentication, incident policy, CORS and deterministic routing are preserved.
+Gemini image analysis was successfully verified with an actual licensed obstruction photograph using `gemini-3.5-flash-lite`. This is the backend's default and bounded transient-error fallback model; keep the Render `GEMINI_MODEL` setting consistent. Both attempts remain real inference and use the same existing lifetime budget. The previous `gemini-3.8-flash` requests timed out.
 
-Current public frontend: https://routeshield-ai-one.vercel.app
+Google Cloud project `routeshield-ai` is selected. The account owner approved the two APIs and restricted-key setup. Enabling Maps JavaScript redirected to billing activation; Maps credentials and live routing are **pending billing completion and actual verification**, not declared working from source tests alone.
 
-Current backend: https://routeshield-backend.onrender.com
+Public frontend: https://routeshield-ai-one.vercel.app
+
+Backend: https://routeshield-backend.onrender.com
 
 ## Enable these Google APIs
 
 | API | Required now? | Purpose |
 | --- | --- | --- |
-| **Maps JavaScript API** | Yes for the proposed map UI | Display the Google map and provider-returned route polylines. |
+| **Maps JavaScript API** | Yes for the optional map UI | Display the Google map and provider-returned route polylines. |
 | **Routes API** | Yes for real routes | Backend `computeRoutes`, explicitly using `WALK`, requesting alternatives. |
 | Geocoding API | Optional | Separate address lookup/reverse geocoding if added later. Not needed for the first version because Routes accepts address waypoints. |
 | Places API (New) | Optional | Address/place autocomplete if added later. Not needed for typed-address submission. |
@@ -42,7 +44,7 @@ In the key's edit page:
 - **API restrictions → Restrict key → Maps JavaScript API** only.
 - Click **Save**. Add another exact approved frontend domain only if it is actually used. Do not allow all `*.vercel.app` websites.
 
-This key will be visible in browser requests when the map is implemented. Its protection is website/API restrictions; a `VITE_` variable is not a secret vault. It must not grant Routes, Gemini or server database access. See [Google's key-security guidance](https://developers.google.com/maps/api-security-best-practices).
+This key will be visible in browser requests when the real map loads. Its protection is website/API restrictions; a `VITE_` variable is not a secret vault. It must not grant Routes, Gemini or server database access. See [Google's key-security guidance](https://developers.google.com/maps/api-security-best-practices).
 
 ## Key 2 — RouteShield Server Routes
 
@@ -68,7 +70,7 @@ Local server checks require an IP restriction that permits the local machine's p
 
 Do not replace the `.env` files wholesale; append settings while preserving existing database/storage/JWT/Gemini values. Both `.env` files are already ignored. Only blank `.env.example` values are committed.
 
-Render: **Environment → Edit → Add environment variable → Save, rebuild, and deploy**. Vercel: add the browser key for **Production**, then **Deployments → latest production deployment → Redeploy** after the frontend map integration exists. Vite embeds browser variables at build time. This project's Vercel Git connection is not configured, so code changes need the existing source-upload deployment process until Git access is connected. Adding keys alone does not add a map screen.
+Render: **Environment → Edit → Add environment variable → Save, rebuild, and deploy**. Vercel: add the browser key for **Production**, then **Deployments → latest production deployment → Redeploy** after setting the browser key. Vite embeds browser variables at build time. This project's Vercel Git connection is not configured, so code changes need the existing source-upload deployment process until Git access is connected. The map loads only on `/navigate`. Without either Google setting, the existing Maple Ward mode remains available.
 
 ## Opt-in real provider check
 
@@ -82,14 +84,15 @@ GOOGLE_MAPS_CHECK_DESTINATION=
 
 Use two unambiguous public landmarks in Visakhapatnam, with city/country included. Avoid sending private home addresses for this check. From `backend`, run `npm run maps:check`. It makes **one potentially billed real walking-route request** with alternatives enabled, validates the returned distance/duration/polyline and prints no key or submitted addresses. Missing configuration exits without a provider request. No database writes or fake paths occur. It cannot test browser referrer restrictions or certify the whole application.
 
-## What must be implemented before activating Real Navigation
+## Implemented real navigation and its limits
 
-1. Keep a separate optional page; lazy-load Maps only there. Maple Ward remains the default and is not replaced.
-2. Add genuine real-location report intake and explicit demo/real separation. Preserve existing evidence, reconciliation, verification and reopening policy. A clicked/reported location still requires validation and must not be inferred from an isolated photo.
-3. Add an authenticated, validated and rate-limited Express endpoint that sends addresses to Routes using the server key. Never let clients proxy arbitrary Google URLs. Request `WALK`, provider warnings, default/alternative labels, distances and high-quality polylines; validate responses.
-4. Decode returned routes and check them against active **real-location** incidents. Do not claim that proximity alone reliably identifies a particular sidewalk, parallel street or grade-separated path. Location ambiguity must be shown for review.
-5. Select only an actual returned alternative that passes the obstruction check. The documented [route modifiers](https://developers.google.com/maps/documentation/routes/reference/rest/v2/RouteModifiers) do not expose arbitrary incident polygon/segment exclusions. Google may return no alternative: show **No verified alternative available** rather than inventing a waypoint/detour. [Alternative-route limitations](https://developers.google.com/maps/documentation/routes/alternative-routes).
-6. Display Google attribution and required walking warnings. Google `WALK` is not `STEP_FREE` or wheelchair certification; keep Maple Ward's verified profile logic separate. [Walking-mode requirements](https://developers.google.com/maps/documentation/routes/reference/rest/v2/RouteTravelMode).
-7. Verify real provider calls, map loading under referrer restrictions, true geolocated obstruction matching, candidate rejection, no-alternative behavior and every existing routing/auth/evidence test before enabling the optional mode publicly.
+- Optional `/navigate` page, with Maps loaded only there; `/plan`, `/report` and all Maple Ward flows remain intact.
+- Backend authenticated, Zod-validated, account-rate-limited Google Routes calls to a fixed provider URL. Requests use `WALK`, address waypoints, real returned alternatives, high-quality polylines, instructions and warnings.
+- Report intake accepts a clicked pin or manually entered coordinates and a genuine image. Location is a user claim, not inferred by Gemini. Upload normalization, private evidence storage, duplicate checks, bounded inference attempts, evidence qualification, distinct-account corroboration and moderator reopening are retained.
+- Reports near the same named location are reconciled within 15 m. Proximity cannot establish road identity. Unknown, conflicting and failed analyses are kept visible; they do not fabricate a block.
+- Routes are matched within 20 m of active **real-location** incidents. Unverified reports generate warnings. Confirmed general-walking blocks reject candidate paths. An actual Google alternative is recommended only when it avoids the confirmed reported locations. If all returned candidates are affected, the app shows **No verified alternative**, retaining the original route and explanation.
+- Google does not expose arbitrary obstruction segment/polygon exclusions through the documented [route modifiers](https://developers.google.com/maps/documentation/routes/reference/rest/v2/RouteModifiers). [Alternative-route limits](https://developers.google.com/maps/documentation/routes/alternative-routes) apply; no invented waypoints/detours are used.
+- Google walking access is unverified, including sidewalks, stairs and parallel/grade-separated paths. The app shows provider warnings and does not equate `WALK` with Maple Ward's `STEP_FREE`. [Walking-mode requirements](https://developers.google.com/maps/documentation/routes/reference/rest/v2/RouteTravelMode).
+- Geometry and policy tests use isolated fixtures, not claimed live provider responses. Billing, restricted key behavior, browser loading and actual Google routing must pass production checks before declaring the optional mode verified.
 
-Setup is awaiting the account owner's billing/API/key actions. The existing application remains available. The prior real Gemini check also remains blocked by provider 503/504/timeouts; Maps configuration does not solve or replace that failed inference.
+Render outbound CIDRs observed for this service: `74.220.48.0/24`, `74.220.56.0/24`. Reconfirm in **Connect → Outbound** if the service region changes. Keep the server key private even though these ranges are shared with other services.
