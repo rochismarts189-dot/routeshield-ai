@@ -24,7 +24,7 @@ The planner compares the normal route and recommended route from the existing ba
 
 Check [the demo script](docs/demo-script.md) and [verification status](docs/verification-status.md) before presenting. A healthy API or configured AI key alone does not prove successful live inference.
 
-[Optional Google Maps setup](docs/google-maps-setup.md) contains the required APIs, separate key restrictions, credential placement and the opt-in `npm run maps:check` command. This prepares credentials; real navigation and real-location incident matching are not yet implemented.
+Google Maps is deferred for this hackathon because billing is unavailable. Maple Ward is the main, independent demonstration and needs no Maps key. The optional real-navigation module is preserved but hidden from the main navigation until its browser key is configured. [Optional Google Maps setup](docs/google-maps-setup.md) documents future configuration; live Google routing has not been verified.
 
 ## The Problem
 
@@ -116,11 +116,12 @@ routeshield-ai/
 - npm >= 9
 
 ### 1. Database Setup
-Execute the two SQL migration files in your PostgreSQL or Supabase instance:
+Apply the migrations with `npm run migrate` from the configured backend. The migration runner reruns the idempotent migration files and verifies the demonstration network. For a fresh manual setup, run the files in order:
 ```bash
 # In your Supabase SQL editor or psql:
 # 1. Run supabase/migrations/0001_init.sql
 # 2. Run supabase/migrations/0002_demo_network.sql
+# 3. Run supabase/migrations/0003_real_navigation.sql (isolated optional tables)
 ```
 
 ### 2. Backend Setup

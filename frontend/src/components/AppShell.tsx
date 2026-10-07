@@ -5,7 +5,9 @@ import { Shield, Navigation, Camera, LogOut, Layers, ArrowUpRight, Info, Globe2 
 
 const navigation = [
   { path: '/plan', label: 'Maple Ward Demo', icon: Navigation },
-  { path: '/navigate', label: 'Real Navigation', icon: Globe2 },
+  ...(import.meta.env.VITE_GOOGLE_MAPS_BROWSER_API_KEY
+    ? [{ path: '/navigate', label: 'Real Navigation', icon: Globe2 }]
+    : []),
   { path: '/incidents', label: 'Incidents', icon: Layers },
   { path: '/report', label: 'Report Obstruction', icon: Camera },
 ];

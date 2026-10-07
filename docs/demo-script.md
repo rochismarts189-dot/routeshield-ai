@@ -2,7 +2,11 @@
 
 Core message: **“Someone reports an obstruction once, and everyone planning that route afterward is warned before they encounter it and can take an alternative route.”**
 
-Preflight the live provider first. See `verification-status.md`: a provider failure must remain visible and must not be presented as successful AI analysis. The times below assume that real inference and qualifying evidence have passed.
+The deployed core photo → Gemini → moderator → warning → detour flow passed with `gemini-3.5-flash-lite`; see `verification-status.md`. Google Maps is deferred and is unnecessary for this demo. A provider failure must remain visible.
+
+For the shortest reliable presentation, open the planner with A→D, show its **normal 460 m route comparison**, open the B-C evidence to show the actual photo and Gemini observations, show the explicit moderator confirmation in the audit trail, then return and switch **620 m General Walk / 740 m Step-Free**. The existing confirmed demo incident is retained. To repeat photo submission, use a genuinely new authorized photo; duplicate fixtures are intentionally rejected. Do not pretend the retained incident is a new live submission or claim its historical photograph is a current physical observation.
+
+The extended sequence below requires your own fresh staged photos and authorized demo accounts. Reopening is optional for the main presentation and must satisfy the evidence and attestation policy.
 
 ---
 
@@ -32,7 +36,7 @@ Preflight the live provider first. See `verification-status.md`: a provider fail
 
 ---
 
-## Part 3: Community Corroboration & Automatic Detour (1:30 – 2:30)
+## Part 3: Verification & Detour (1:30 – 2:30)
 1. **Submit Distinct Photo from Account 2**:
    - Log in as Community Account 2 (`user2@demo.internal`).
    - Upload a genuinely different authorized photograph to segment `BC`.
