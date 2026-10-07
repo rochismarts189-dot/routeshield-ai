@@ -29,7 +29,7 @@ Render environment:
 | --- | --- |
 | `NODE_ENV` | `production` |
 | `TRUST_PROXY_HOPS` | `1` |
-| `FRONTEND_URL` | Exact planned Vercel HTTPS origin; replace with the actual origin after deploying Vercel |
+| `FRONTEND_URL` | Leave blank during backend-first setup; set the exact Vercel HTTPS origin after deploying the frontend |
 | `DATABASE_URL` | Supabase session pooler URL, port 5432 |
 | `DATABASE_CA_CERT_BASE64` | Project CA when required for verified TLS |
 | `JWT_SECRET` | At least 32 random bytes; blueprint can generate it |
@@ -39,7 +39,9 @@ Render environment:
 | `SUPABASE_SECRET_KEY` | Backend-only secret/service-role key |
 | `SUPABASE_STORAGE_BUCKET` | `evidence` |
 
-Leave `PORT` to Render. Missing production settings cause startup to fail explicitly. If the Vercel origin is not known yet, temporarily set `FRONTEND_URL=https://deployment-pending.invalid`; server-to-server health checks still work. Replace it with the actual Vercel origin before browser verification.
+Leave `PORT` to Render. Missing production secrets cause startup to fail explicitly. `FRONTEND_URL` can be blank for the first backend deployment: server-to-server checks work, and every browser Origin is denied until the exact Vercel HTTPS origin is configured. A configured HTTP origin or URL containing a path is rejected. Never set it to the Render backend URL.
+
+If Render reports TS7016 for `express`, `pg`, or `bcrypt`, its build has omitted development dependencies. Keep these type packages in devDependencies and change the service's **actual dashboard Build Command** to `npm ci --include=dev && npm run build`. Updating `render.yaml` alone does not change an existing manually created service. Keep TypeScript strict mode enabled.
 
 Obtain the **actual** public Render origin from the dashboard. Verify `/api/health` and `/api/ready` both return 200 JSON. Readiness checks infrastructure and key presence; it does not perform a billed Gemini inference.
 

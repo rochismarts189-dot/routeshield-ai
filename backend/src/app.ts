@@ -20,7 +20,9 @@ app.set('trust proxy', env.TRUST_PROXY_HOPS);
 app.use(helmet());
 
 // CORS configuration allowing localhost in development and exact FRONTEND_URL
-const allowedOrigins = [env.FRONTEND_URL, ...(env.NODE_ENV === 'production' ? [] : ['http://localhost:5173', 'http://127.0.0.1:5173'])];
+// A backend-first deployment can leave FRONTEND_URL blank. That permits health
+// checks without an Origin header while denying every cross-origin browser.
+const allowedOrigins = [env.FRONTEND_URL, ...(env.NODE_ENV === 'production' ? [] : ['http://localhost:5173', 'http://127.0.0.1:5173'])].filter((origin): origin is string => Boolean(origin));
 
 app.use(
   cors({

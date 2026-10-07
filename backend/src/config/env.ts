@@ -7,7 +7,8 @@ const optionalSetting = z.preprocess(value => value === '' ? undefined : value, 
 export const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().int().min(1).max(65535).default(5001),
-  FRONTEND_URL: z.string().url().default('http://localhost:5173').transform(value => value.replace(/\/$/, '')),
+  FRONTEND_URL: z.preprocess(value => typeof value === 'string' && !value.trim() ? undefined : value,
+    z.string().trim().url().optional().transform(value => value?.replace(/\/$/, ''))),
   TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(0),
   DATABASE_URL: optionalSetting, DATABASE_CA_CERT_BASE64: optionalSetting,
   JWT_SECRET: optionalSetting,
@@ -37,12 +38,16 @@ export const envSchema = z.object({
     if (!data.JWT_SECRET || Buffer.byteLength(data.JWT_SECRET) < 32) {
       ctx.addIssue({ code: 'custom', path: ['JWT_SECRET'], message: 'Use at least 32 random bytes for JWT_SECRET.' });
     }
-    const frontend = new URL(data.FRONTEND_URL);
-    if (frontend.origin !== data.FRONTEND_URL || frontend.protocol !== 'https:') {
+    const frontend = data.FRONTEND_URL ? new URL(data.FRONTEND_URL) : null;
+    if (frontend && (frontend.origin !== data.FRONTEND_URL || frontend.protocol !== 'https:')) {
       ctx.addIssue({ code: 'custom', path: ['FRONTEND_URL'], message: 'Set the exact HTTPS frontend origin in production.' });
     }
   }
 });
 const parsed = envSchema.safeParse(process.env);
 if (!parsed.success) throw new Error(`Backend configuration invalid: ${parsed.error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join('; ')}`);
-export const env = { ...parsed.data, JWT_SECRET: parsed.data.JWT_SECRET || randomBytes(32).toString('hex') };
+export const env = {
+  ...parsed.data,
+  FRONTEND_URL: parsed.data.FRONTEND_URL ?? (parsed.data.NODE_ENV === 'production' ? undefined : 'http://localhost:5173'),
+  JWT_SECRET: parsed.data.JWT_SECRET || randomBytes(32).toString('hex'),
+};
