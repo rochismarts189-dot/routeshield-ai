@@ -7,6 +7,8 @@ export const verifyIncidentSchema = z.object({
   expectedVersion: z.number().int().positive('expectedVersion must be a positive integer'),
   attestation: z.boolean().optional(),
   reason: z.string().min(1, 'Reason is required').max(1000),
+}).strict().refine((data) => data.action === 'DISMISS' || !!data.evidenceReportId, {
+  message: 'Select the evidence report supporting verification.', path: ['evidenceReportId'],
 }).refine((data) => {
   if (data.action === 'CLEAR') {
     // CLEAR requires attestation that whole segment was checked

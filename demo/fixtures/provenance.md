@@ -1,27 +1,13 @@
-# Demonstration Image Fixtures & Provenance
+# Existing demo illustrations
 
-All image fixtures in this directory are authorized, staged, synthetic test fixtures generated for testing and demonstration purposes.
+These JPEG files were already present in the repository. They are stylized drawings, not photographs of actual pedestrian paths:
 
-## Fixture Inventory & Provenance
+- `obstruction_barrier_1.jpg`: orange closure sign/barrier illustration.
+- `obstruction_barrier_2.jpg`: second synthetic illustration, not an independently captured angle.
+- `clear_walkway.jpg`: synthetic walkway illustration, not proof of whole-segment clearance.
 
-1. **`obstruction_barrier_1.jpg`**
-   - **Type**: Synthetic staged obstruction
-   - **Depiction**: High-contrast construction fencing barrier obstructing sidewalk pathway
-   - **License**: CC0 / Public Domain synthetic demonstration asset
-   - **Personal Information**: None. Contains zero human subjects, license plates, or identifying personal marks.
+The original repository described them as synthetic demonstration assets and claimed CC0; no original author/license record is supplied here. This review does not independently establish that licensing claim.
 
-2. **`obstruction_barrier_2.jpg`**
-   - **Type**: Distinct second-angle staged obstruction
-   - **Depiction**: Alternative perspective of physical construction barrier blocking the pedestrian curb
-   - **License**: CC0 / Public Domain synthetic demonstration asset
-   - **Personal Information**: None.
+They may exercise image upload/decoding, but must be labelled illustrations in a demonstration. Do not present them as real-world evidence or expect Gemini to confirm full-width blockage or step-free clearance from them. The application sends the actual image to Gemini and preserves uncertainty; it never substitutes a predetermined result.
 
-3. **`clear_walkway.jpg`**
-   - **Type**: Unobstructed walkway
-   - **Depiction**: Clear, open pedestrian sidewalk with no construction debris or temporary obstacles
-   - **License**: CC0 / Public Domain synthetic demonstration asset
-   - **Personal Information**: None.
-
-## Integrity Notes
-- These images contain no personal data or private property identifiers.
-- Images are processed strictly through the application upload pipeline: decoded, metadata stripped, normalized to 1600px max edge, and cryptographically hashed (SHA-256) upon submission.
+For the live hackathon flow, use your own authorized photographs of a staged obstruction and an unobstructed passage, captured from useful angles without personal information. Map their locations explicitly onto the fictional Maple Ward network and label the mapping as a demo. Test them with real Gemini before recording the video. If evidence is insufficient, request another photo or use moderator review only when its evidence requirements are met.

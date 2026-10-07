@@ -48,13 +48,14 @@ export async function findReportById(id: string): Promise<ReportRecord | null> {
   return res.rows[0] || null;
 }
 
-export async function listReportsForIncident(incidentId: string): Promise<ReportRecord[]> {
-  const res = await query<ReportRecord>(
+export async function listReportsForIncident(incidentId: string, client?: pg.PoolClient): Promise<ReportRecord[]> {
+  const execute = client ? client.query.bind(client) : query;
+  const res = await execute<ReportRecord>(
     `SELECT r.*, u.display_name as reporter_name
      FROM routeshield.reports r
      JOIN routeshield.users u ON r.reporter_id = u.id
      WHERE r.incident_id = $1
-     ORDER BY r.received_at DESC;`,
+     ORDER BY r.received_at DESC, r.id DESC;`,
     [incidentId]
   );
   return res.rows;
@@ -116,8 +117,7 @@ export async function updateReportAnalysis(
      SET analysis_status = $2,
          analysis_model = $3,
          analysis_json = $4,
-         analysis_error_code = $5,
-         analysis_attempts = analysis_attempts + 1
+         analysis_error_code = $5
      WHERE id = $1
      RETURNING *;`,
     [
@@ -129,6 +129,14 @@ export async function updateReportAnalysis(
     ]
   );
   return res.rows[0];
+}
+
+export async function reserveProviderAttempt(reportId: string): Promise<void> {
+  const result = await query(
+    `UPDATE routeshield.reports SET analysis_attempts = analysis_attempts + 1
+     WHERE id = $1 AND analysis_status = 'PENDING' AND analysis_attempts < 3 RETURNING id`, [reportId]
+  );
+  if (!result.rows.length) throw new Error('MAX_ATTEMPTS_EXCEEDED');
 }
 
 export async function setReportExclusion(

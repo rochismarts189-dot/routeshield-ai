@@ -1,7 +1,7 @@
 import { app } from './app.js';
 import { env } from './config/env.js';
 
-const PORT = env.PORT || 5000;
+const PORT = env.PORT || 5001;
 const HOST = '0.0.0.0';
 
 app.listen(PORT, HOST, () => {

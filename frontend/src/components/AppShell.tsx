@@ -19,7 +19,7 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-emerald-600 focus:text-white focus:rounded focus:outline-none"
       >
-        Skip to main navigation and content
+        Skip to main content
       </a>
 
       {/* Prominent Fictional Network Disclaimer Banner */}
@@ -37,7 +37,7 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
       {/* Main Header */}
       <header className="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap gap-3 items-center justify-between">
           {/* Brand */}
           <Link
             to="/plan"
@@ -58,9 +58,10 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
           </Link>
 
           {/* Navigation links */}
-          <nav className="flex items-center gap-1 sm:gap-2" aria-label="Main Navigation">
+          <nav className="order-3 w-full sm:order-none sm:w-auto flex flex-wrap items-center gap-1 sm:gap-2" aria-label="Main Navigation">
             <Link
               to="/plan"
+              aria-current={location.pathname === '/plan' ? 'page' : undefined}
               className={`px-3 py-2 rounded-md text-sm transition-colors flex items-center gap-1.5 ${isActive('/plan')}`}
             >
               <Navigation className="w-4 h-4" aria-hidden="true" />
@@ -69,6 +70,7 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
             <Link
               to="/incidents"
+              aria-current={location.pathname === '/incidents' ? 'page' : undefined}
               className={`px-3 py-2 rounded-md text-sm transition-colors flex items-center gap-1.5 ${isActive('/incidents')}`}
             >
               <AlertCircle className="w-4 h-4" aria-hidden="true" />
@@ -77,6 +79,7 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
             <Link
               to="/report"
+              aria-current={location.pathname === '/report' ? 'page' : undefined}
               className={`px-3 py-2 rounded-md text-sm transition-colors flex items-center gap-1.5 ${isActive('/report')}`}
             >
               <Camera className="w-4 h-4" aria-hidden="true" />
@@ -130,7 +133,7 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
       </header>
 
       {/* Main Content Area */}
-      <main id="main-content" className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {children}
       </main>
 

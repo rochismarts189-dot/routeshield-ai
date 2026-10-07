@@ -21,19 +21,19 @@ This script follows the exact demonstration flow specified in the project requir
 1. **Submit Visual Evidence**:
    - Log in as Community Account 1 (`user1@demo.internal`).
    - Navigate to `/report`. Select Segment `BC: Market Corner to Library Junction`.
-   - Upload authorized obstruction photo fixture `demo/fixtures/obstruction_barrier_1.jpg`.
+   - Upload your own authorized, preflight-tested obstruction photograph (the existing `demo/fixtures` JPEGs are illustrations).
    - Set claim to `BLOCKED`. Submit report.
 2. **Review First Report Outcome**:
    - Inspect Gemini multimodal observations on the newly created incident page (`/incidents/:id`).
    - Verify the state machine: **Status remains UNVERIFIED**.
-   - Note that AI visual inference identifies the obstruction, but the system does *not* automatically close the path from a single photograph.
+   - Note that a single photo does not confirm a block. Step-free planning can provisionally avoid a usable reported obstruction; general walking receives an unverified warning.
 
 ---
 
 ## Part 3: Community Corroboration & Automatic Detour (1:30 – 2:30)
 1. **Submit Distinct Photo from Account 2**:
    - Log in as Community Account 2 (`user2@demo.internal`).
-   - Upload second distinct photo `demo/fixtures/obstruction_barrier_2.jpg` to segment `BC`.
+   - Upload a genuinely different authorized photograph to segment `BC`.
 2. **Inspect Corroboration Transition**:
    - Refresh incident page. Status automatically updates to **`CONFIRMED_BLOCKED`**.
    - Confirmation basis displays: *"Automated community corroboration (2+ distinct accounts & photographs within 30m window)"*.
@@ -47,17 +47,17 @@ This script follows the exact demonstration flow specified in the project requir
 
 ## Part 4: Clearance Submission & Moderator Full Check (2:30 – 3:30)
 1. **Submit Clear Photo**:
-   - Submit clear photo `demo/fixtures/clear_walkway.jpg` with claim `CLEAR`.
+   - Submit a fresh authorized clear-passage photograph with claim `CLEAR`.
    - Show that status updates to **`REQUIRES_REVIEW` / `DISPUTED`**, but **the route remains safely detoured**!
    - Highlight the safety rule: A single camera angle does not prove the entire link is unobstructed.
 2. **Moderator Segment Attestation & Clearance**:
    - Log in as Moderator (`moderator@routeshield.internal`).
    - Open Verification Panel on incident.
-   - Select action `CLEAR`.
+   - Select action `CLEAR`, select the fresh qualifying clear report, and enter a verification reason.
    - Check mandatory attestation: *"I attest that the whole selected pedestrian segment was checked and verified clear."*
    - Submit clearance.
 3. **Restored Route**:
-   - Return to Planner: Baseline route immediately restores to **460m** direct path.
+   - Return to Planner: Refresh the planner; the baseline route restores to **460m** direct path.
 
 ---
 
@@ -68,3 +68,5 @@ This script follows the exact demonstration flow specified in the project requir
    - Show terminal test suite output (`vitest run`):
      - `routing.test.ts` (460m / 620m / 740m / NO_ROUTE with BC+GH blocked).
      - `incident-policy.test.ts` (quorum rules, 30m window, duplicate hashes, attestation).
+
+Preflight: provision all demo accounts yourself; these example emails are not automatically seeded. Use current observation timestamps and real live Gemini inference. Images are illustrative evidence for fictional Maple Ward, never claims about actual road locations. If the selected photos do not qualify for automatic corroboration, use explicit moderator evidence review rather than force or fabricate the model result.

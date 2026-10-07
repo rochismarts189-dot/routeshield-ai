@@ -174,3 +174,24 @@ CREATE TABLE IF NOT EXISTS routeshield.incident_events (
 
 CREATE INDEX IF NOT EXISTS idx_incident_events_incident_created
   ON routeshield.incident_events (incident_id, created_at, id);
+
+-- Express uses a server-side PostgreSQL connection. Custom JWTs are not Supabase Auth JWTs.
+-- No browser/Data API role may read this application's schema or password hashes.
+ALTER TABLE routeshield.users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE routeshield.nodes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE routeshield.edges ENABLE ROW LEVEL SECURITY;
+ALTER TABLE routeshield.incidents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE routeshield.reports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE routeshield.incident_events ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON ALL TABLES IN SCHEMA routeshield FROM PUBLIC;
+REVOKE ALL ON ALL SEQUENCES IN SCHEMA routeshield FROM PUBLIC;
+DO $$
+DECLARE role_name TEXT;
+BEGIN
+  FOREACH role_name IN ARRAY ARRAY['anon', 'authenticated'] LOOP
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = role_name) THEN
+      EXECUTE format('REVOKE ALL ON ALL TABLES IN SCHEMA routeshield FROM %I', role_name);
+      EXECUTE format('REVOKE ALL ON ALL SEQUENCES IN SCHEMA routeshield FROM %I', role_name);
+    END IF;
+  END LOOP;
+END $$;

@@ -19,7 +19,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode }) => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const redirectUrl = searchParams.get('redirect') || '/plan';
+  const requestedRedirect = searchParams.get('redirect') || '/plan';
+  const redirectUrl = requestedRedirect.startsWith('/') && !requestedRedirect.startsWith('//') ? requestedRedirect : '/plan';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,6 +89,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode }) => {
                 id="name-input"
                 type="text"
                 required
+                autoComplete="nickname"
                 maxLength={80}
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
@@ -104,6 +106,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode }) => {
             <input
               id="email-input"
               type="email"
+              maxLength={254}
+              autoComplete="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -121,6 +125,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode }) => {
                 id="password-input"
                 type={showPassword ? 'text' : 'password'}
                 required
+                autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
                 minLength={mode === 'register' ? 12 : 1}
                 maxLength={128}
                 value={password}

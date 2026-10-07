@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { toLocalDateTimeInput } from '../lib/time';
 import { api } from '../lib/api';
 import { Edge } from '../types';
 import {
@@ -25,7 +26,7 @@ export const ReportPage: React.FC = () => {
   const [claim, setClaim] = useState<'BLOCKED' | 'CLEAR' | 'UNCERTAIN'>('BLOCKED');
   const [description, setDescription] = useState('');
   const [observedAt, setObservedAt] = useState<string>(
-    new Date(Date.now() - 5 * 60 * 1000).toISOString().slice(0, 16)
+    toLocalDateTimeInput(new Date(Date.now() - 60_000))
   );
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -39,12 +40,15 @@ export const ReportPage: React.FC = () => {
     api
       .getNetwork()
       .then((data) => setEdges(data.edges))
-      .catch((err) => console.error('Failed to load edges:', err));
+      .catch((err) => setError(err.message || 'Unable to load the pedestrian segments.'));
   }, []);
+
+  useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      if (!['image/jpeg', 'image/png'].includes(file.type)) { setError('Choose a JPEG or PNG photograph.'); return; }
       if (file.size > 5 * 1024 * 1024) {
         setError('Selected photograph exceeds the 5MB limit.');
         return;
@@ -62,7 +66,7 @@ export const ReportPage: React.FC = () => {
     setFailedAnalysisIncidentId(null);
 
     if (!isAuthenticated) {
-      navigate(`/login?redirect=${encodeURIComponent('/report')}`);
+      navigate(`/login?redirect=${encodeURIComponent(`/report?${searchParams.toString()}`)}`);
       return;
     }
 
@@ -76,7 +80,9 @@ export const ReportPage: React.FC = () => {
       return;
     }
 
+    if (!Number.isFinite(new Date(observedAt).getTime())) { setError('Choose a valid observation time.'); return; }
     const formData = new FormData();
+    if (searchParams.get('incidentId')) formData.append('incidentId', searchParams.get('incidentId')!);
     formData.append('photo', selectedFile);
     formData.append('edgeId', selectedEdgeId);
     formData.append('claim', claim);
@@ -124,7 +130,7 @@ export const ReportPage: React.FC = () => {
             <span>You must be logged in to submit community evidence.</span>
           </div>
           <Link
-            to="/login?redirect=/report"
+            to={`/login?redirect=${encodeURIComponent(`/report?${searchParams.toString()}`)}`}
             className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded font-semibold text-xs transition-colors shrink-0"
           >
             Log In Now
@@ -155,10 +161,12 @@ export const ReportPage: React.FC = () => {
         </div>
       )}
 
+      <p className="text-sm text-slate-300">Maple Ward is a fictional demonstration network. Evidence is visible to other visitors through temporary image links. Avoid photographs containing faces or personal information.</p>
+      {edges.length === 0 && error && <button type="button" onClick={() => api.getNetwork().then(data => { setEdges(data.edges); setError(null); }).catch(err => setError(err.message))}>Retry loading segments</button>}
       {/* Main Report Form */}
       <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl space-y-5">
         {error && (
-          <div className="bg-red-950/60 border border-red-800 text-red-200 p-4 rounded-lg text-sm flex items-center gap-2">
+          <div role="alert" className="bg-red-950/60 border border-red-800 text-red-200 p-4 rounded-lg text-sm flex items-center gap-2">
             <AlertTriangle className="w-5 h-5 text-red-400 shrink-0" aria-hidden="true" />
             <span>{error}</span>
           </div>
@@ -198,7 +206,7 @@ export const ReportPage: React.FC = () => {
                 <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 mb-3">
                   <Upload className="w-6 h-6" aria-hidden="true" />
                 </div>
-                <span className="text-sm font-semibold text-white">Click or drag photograph here</span>
+                <span className="text-sm font-semibold text-white">Choose photograph</span>
                 <span className="text-xs text-slate-400 mt-1">JPEG or PNG format up to 5MB</span>
                 <input
                   type="file"
@@ -302,14 +310,14 @@ export const ReportPage: React.FC = () => {
         {/* Submit Progress or Button */}
         <div className="pt-2">
           {submitting ? (
-            <div className="p-4 bg-emerald-950/40 border border-emerald-800 rounded-lg flex items-center justify-center gap-3 text-emerald-300 text-sm">
+            <div role="status" aria-live="polite" className="p-4 bg-emerald-950/40 border border-emerald-800 rounded-lg flex items-center justify-center gap-3 text-emerald-300 text-sm">
               <Sparkles className="w-5 h-5 animate-spin" aria-hidden="true" />
               <span>{uploadProgress || 'Processing upload...'}</span>
             </div>
           ) : (
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || edges.length === 0}
               className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg shadow-lg shadow-emerald-900/30 transition-colors flex items-center justify-center gap-2"
             >
               <Camera className="w-5 h-5" aria-hidden="true" />

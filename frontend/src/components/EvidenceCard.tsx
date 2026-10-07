@@ -20,7 +20,8 @@ interface EvidenceCardProps {
 }
 
 export const EvidenceCard: React.FC<EvidenceCardProps> = ({ report, onRefresh }) => {
-  const { isModerator } = useAuth();
+  const { isModerator, user } = useAuth();
+  const [imageError, setImageError] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [excluding, setExcluding] = useState(false);
   const [excludeReason, setExcludeReason] = useState('');
@@ -80,12 +81,13 @@ export const EvidenceCard: React.FC<EvidenceCardProps> = ({ report, onRefresh })
         {/* Evidence Photo Column */}
         <div className="md:col-span-5 flex flex-col justify-between">
           <div className="relative aspect-[4/3] rounded-lg overflow-hidden bg-slate-950 border border-slate-800 group">
-            <img
+            {report.signedPhotoUrl && !imageError ? <img
               src={report.signedPhotoUrl}
               alt={`Evidence photo submitted by ${report.reporterName}: ${report.description || 'obstruction report'}`}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              className="w-full h-full object-contain transition-transform duration-300"
               loading="lazy"
-            />
+              onError={() => setImageError(true)}
+            /> : <p className="p-6 text-sm text-slate-300">Image link is unavailable or expired. Refresh the incident to request a new link.</p>}
             <div className="absolute top-2 left-2 bg-slate-950/80 backdrop-blur px-2.5 py-1 rounded text-xs font-semibold text-white border border-slate-700">
               Claim: {report.claim}
             </div>
@@ -172,6 +174,9 @@ export const EvidenceCard: React.FC<EvidenceCardProps> = ({ report, onRefresh })
                   </ul>
                 </div>
 
+                <p className="text-slate-300">Severity: {analysis.severity} · Evidence quality: {analysis.evidence_quality}</p>
+                {analysis.uncertainty_reasons.length > 0 && <div><strong>Uncertainties</strong><ul className="list-disc pl-4">{analysis.uncertainty_reasons.map((reason, i) => <li key={i}>{reason}</li>)}</ul></div>}
+                <p className="text-slate-400">Confidence is the model’s estimate, not proof of passability or image authenticity.</p>
                 {/* Subjective Confidence */}
                 <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-800">
                   <span>
@@ -191,7 +196,7 @@ export const EvidenceCard: React.FC<EvidenceCardProps> = ({ report, onRefresh })
                 <p className="text-slate-400">
                   The visual model was unable to complete inspection. Report remains saved as unverified evidence.
                 </p>
-                {report.analysisAttempts < 3 && (
+                {report.analysisAttempts < 3 && (isModerator || user?.id === report.reporterId) && (
                   <button
                     onClick={handleRetry}
                     disabled={retrying}
@@ -211,7 +216,7 @@ export const EvidenceCard: React.FC<EvidenceCardProps> = ({ report, onRefresh })
 
           {/* Action Row */}
           <div className="mt-3 pt-2 border-t border-slate-800 flex items-center justify-between">
-            {actionError && <span className="text-xs text-red-400">{actionError}</span>}
+            {actionError && <span role="alert" className="text-xs text-red-400">{actionError}</span>}
 
             {isModerator && !report.excludedFromQuorum && (
               <button
@@ -228,7 +233,7 @@ export const EvidenceCard: React.FC<EvidenceCardProps> = ({ report, onRefresh })
 
       {/* Exclusion Modal */}
       {showExcludeModal && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
+        <div className="p-4 border-t border-slate-700">
           <div className="bg-slate-900 border border-slate-700 rounded-xl p-5 max-w-md w-full shadow-2xl space-y-4">
             <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
               <Ban className="w-4 h-4 text-red-400" aria-hidden="true" />
@@ -239,8 +244,11 @@ export const EvidenceCard: React.FC<EvidenceCardProps> = ({ report, onRefresh })
             </p>
             <form onSubmit={handleExclude} className="space-y-3">
               <div>
-                <label className="text-xs text-slate-400 block mb-1">Reason for exclusion</label>
+                <label htmlFor={`exclude-${report.id}`} className="text-xs text-slate-400 block mb-1">Reason for exclusion</label>
                 <textarea
+                  id={`exclude-${report.id}`}
+                  maxLength={1000}
+                  autoFocus
                   required
                   rows={3}
                   value={excludeReason}

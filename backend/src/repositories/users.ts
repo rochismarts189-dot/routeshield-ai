@@ -1,4 +1,4 @@
-import bcryptjs from 'bcryptjs';
+import bcrypt from 'bcrypt';
 import { query } from '../config/db.js';
 
 export interface UserRecord {
@@ -11,12 +11,11 @@ export interface UserRecord {
 }
 
 export async function hashPassword(plain: string): Promise<string> {
-  const salt = await bcryptjs.genSalt(10);
-  return bcryptjs.hash(plain, salt);
+  return bcrypt.hash(plain, 10);
 }
 
 export async function comparePassword(plain: string, hash: string): Promise<boolean> {
-  return bcryptjs.compare(plain, hash);
+  return bcrypt.compare(plain, hash);
 }
 
 export async function findUserByEmail(email: string): Promise<UserRecord | null> {

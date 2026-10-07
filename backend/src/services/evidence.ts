@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import sharp from 'sharp';
+import { AppError } from '../lib/errors.js';
 
 export interface ProcessedEvidence {
   normalizedBuffer: Buffer;
@@ -13,21 +14,22 @@ export async function processAndNormalizePhoto(
   mimeType: string
 ): Promise<ProcessedEvidence> {
   if (inputBuffer.length > 5 * 1024 * 1024) {
-    throw new Error('Image exceeds 5MB size limit');
+    throw new AppError(400, 'INVALID_PHOTO', 'Image exceeds 5MB size limit');
   }
 
   // Use Sharp to decode, verify image content, strip metadata, and resize longest edge to max 1600px
-  const image = sharp(inputBuffer);
-  const metadata = await image.metadata();
+  const image = sharp(inputBuffer, { limitInputPixels: 20_000_000 });
+  const metadata = await image.metadata().catch(() => { throw new AppError(400, 'INVALID_PHOTO', 'Image cannot be decoded. Upload a valid JPEG or PNG.'); });
+  if (!['jpeg', 'png'].includes(metadata.format || '') || metadata.pages && metadata.pages > 1) throw new AppError(400, 'INVALID_PHOTO', 'Only single-frame JPEG and PNG photos are supported.');
 
   if (!metadata.width || !metadata.height) {
-    throw new Error('Invalid image: unable to read dimensions');
+    throw new AppError(400, 'INVALID_PHOTO', 'Unable to read image dimensions');
   }
 
   // 20 Megapixels decoded check
   const totalPixels = metadata.width * metadata.height;
   if (totalPixels > 20_000_000) {
-    throw new Error('Decoded image exceeds 20 megapixel safety limit');
+    throw new AppError(400, 'INVALID_PHOTO', 'Image exceeds 20 megapixels');
   }
 
   // Resize longest edge to 1600px if larger, preserve aspect ratio, strip EXIF metadata

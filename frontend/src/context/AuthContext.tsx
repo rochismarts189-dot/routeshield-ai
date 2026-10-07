@@ -40,6 +40,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setUser(null);
   };
 
+  useEffect(() => {
+    const expired = () => { setToken(null); setUser(null); };
+    window.addEventListener('routeshield:session-expired', expired);
+    return () => window.removeEventListener('routeshield:session-expired', expired);
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{

@@ -59,7 +59,7 @@ export const IncidentPage: React.FC = () => {
     return (
       <div className="max-w-2xl mx-auto bg-slate-900 border border-slate-800 rounded-xl p-8 text-center space-y-4">
         <AlertTriangle className="w-12 h-12 text-red-400 mx-auto" aria-hidden="true" />
-        <h2 className="text-xl font-bold text-white">Incident Not Found</h2>
+        <h2 className="text-xl font-bold text-white">Unable to Load Incident</h2>
         <p className="text-sm text-slate-400">{error || 'This incident may have been removed or does not exist.'}</p>
         <div className="pt-2 flex justify-center gap-3">
           <Link
@@ -175,11 +175,11 @@ export const IncidentPage: React.FC = () => {
         {/* Action Row */}
         <div className="pt-2 flex justify-end">
           <Link
-            to={`/report?edgeId=${incident.edgeId}`}
+            to={`/report?edgeId=${incident.edgeId}${incident.status !== 'CLEARED' && !incident.dismissedAt ? `&incidentId=${incident.id}` : ''}`}
             className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold flex items-center gap-2 shadow transition-colors"
           >
             <Camera className="w-4 h-4" aria-hidden="true" />
-            <span>Add Corroborating / Clear Evidence</span>
+            <span>{incident.status === 'CLEARED' || incident.dismissedAt ? 'Report a New Obstruction' : 'Add Corroborating / Clear Evidence'}</span>
           </Link>
         </div>
       </div>

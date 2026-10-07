@@ -152,7 +152,7 @@ Returns current user session. Requires `Authorization: Bearer <token>`.
 ## 3. Reports & AI Inference
 
 ### `POST /api/reports`
-Authenticated multipart upload (`photo` file, `edgeId`, `claim`, `description`, `observedAt`).
+Authenticated multipart upload (`photo` file, `edgeId`, `claim`, `description`, `observedAt`, optional `incidentId`).
 - Validates 5MB limit, normalizes pixels, computes SHA-256 hash.
 - Invokes Gemini multimodal AI with strict JSON schema.
 - Transactionally persists report and evaluates corroboration quorum.
@@ -175,7 +175,7 @@ Authenticated multipart upload (`photo` file, `edgeId`, `claim`, `description`, 
   ```
 
 ### `POST /api/reports/:id/retry-analysis`
-Retries failed Gemini analysis (max 3 attempts). Accessible by report owner or moderator.
+Retries FAILED Gemini analysis with an atomic claim (max 3 actual provider attempts across the report lifetime). COMPLETE or already-running reports return 409. Accessible by report owner or moderator.
 
 ### `POST /api/reports/:id/exclude`
 Moderator action to exclude report from quorum calculations with reason.
@@ -191,9 +191,17 @@ Moderator action with optimistic concurrency check (`expectedVersion`).
   {
     "action": "CLEAR",
     "expectedVersion": 2,
+    "evidenceReportId": "uuid-of-fresh-qualifying-clear-report",
     "attestation": true,
     "reason": "On-site check confirmed full pathway opened."
   }
   ```
 - **Response 200**: Updated incident record.
 - **Response 409**: Conflict on stale version match.
+
+### `GET /api/ready`
+Returns 200 only when the database has the 8-node/10-edge network, Storage bucket is private and the Gemini key is configured. This is separate from liveness and does not assert live provider success.
+
+Evidence review URLs expire after ten minutes and are null when signing fails. Public reports include the reporter's display name and ID, never email/password hashes or storage credentials. Refresh the incident for new signed links. UUID route parameters and strict JSON bodies are validated. Missing infrastructure returns 503, duplicate photographs 409, unauthorized writes 401/403, and upload errors 400.
+
+CONFIRM_BLOCKED and CLEAR require `evidenceReportId` belonging to this incident. Selected evidence must be fresh (30-minute window, up to five-minute clock skew), usable and support the affected profiles. CLEAR also requires whole-segment attestation. Closed incidents reject further verification; a new incident requires fresh evidence. Evidence receipt/exclusion and state transitions persist in the audit log.

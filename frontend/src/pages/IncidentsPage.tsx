@@ -149,12 +149,12 @@ export const IncidentsPage: React.FC = () => {
       )}
 
       {/* Empty State */}
-      {!loading && incidents.length === 0 && (
+      {!loading && !error && incidents.length === 0 && (
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-12 text-center text-slate-400 space-y-3">
           <Shield className="w-12 h-12 text-slate-600 mx-auto" aria-hidden="true" />
-          <h3 className="text-lg font-bold text-white">No Active Reports Matching Filters</h3>
+          <h3 className="text-lg font-bold text-white">No Reports Matching Filters</h3>
           <p className="text-xs max-w-sm mx-auto">
-            All segments matching your filter are currently free of reported community obstructions.
+            No reports match these filters. An absence of reports does not establish that a path is clear.
           </p>
         </div>
       )}

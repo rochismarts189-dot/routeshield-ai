@@ -75,9 +75,10 @@ export interface GeminiAnalysis {
 export interface ReportItem {
   id: string;
   reporterName: string;
+  reporterId: string;
   claim: 'BLOCKED' | 'CLEAR' | 'UNCERTAIN';
   description: string;
-  signedPhotoUrl: string;
+  signedPhotoUrl: string | null;
   contentType: string;
   byteCount: number;
   latitude: number;

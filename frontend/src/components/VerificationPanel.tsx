@@ -16,6 +16,7 @@ export const VerificationPanel: React.FC<VerificationPanelProps> = ({
   const [blockGeneral, setBlockGeneral] = useState(true);
   const [blockStepFree, setBlockStepFree] = useState(true);
   const [attestation, setAttestation] = useState(false);
+  const [evidenceReportId, setEvidenceReportId] = useState('');
   const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,6 +25,7 @@ export const VerificationPanel: React.FC<VerificationPanelProps> = ({
     e.preventDefault();
     setError(null);
 
+    if (action !== 'DISMISS' && !evidenceReportId) { setError('Select the evidence supporting this action.'); return; }
     if (!reason.trim()) {
       setError('A reason is required for any verification or moderation action');
       return;
@@ -47,6 +49,7 @@ export const VerificationPanel: React.FC<VerificationPanelProps> = ({
 
       await api.verifyIncident(incident.id, {
         action,
+        evidenceReportId: action === 'DISMISS' ? undefined : evidenceReportId,
         blockedProfiles: action === 'CONFIRM_BLOCKED' ? blockedProfiles : undefined,
         expectedVersion: incident.version,
         attestation: action === 'CLEAR' ? attestation : undefined,
@@ -61,6 +64,8 @@ export const VerificationPanel: React.FC<VerificationPanelProps> = ({
     }
   };
 
+  if (incident.status === 'CLEARED' || incident.dismissedAt) return <p className="text-emerald-300">This incident is closed. New obstructions require a new report.</p>;
+
   return (
     <div className="bg-purple-950/20 border border-purple-900/50 rounded-xl p-5 shadow-xl space-y-4">
       <div className="flex items-center justify-between border-b border-purple-900/40 pb-3">
@@ -74,7 +79,7 @@ export const VerificationPanel: React.FC<VerificationPanelProps> = ({
       </div>
 
       {error && (
-        <div className="bg-red-950/60 border border-red-800 text-red-200 p-3 rounded-lg text-xs flex items-center gap-2">
+        <div role="alert" className="bg-red-950/60 border border-red-800 text-red-200 p-3 rounded-lg text-xs flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" aria-hidden="true" />
           <span>{error}</span>
         </div>
@@ -127,6 +132,14 @@ export const VerificationPanel: React.FC<VerificationPanelProps> = ({
           </div>
         </div>
 
+        {action !== 'DISMISS' && <div>
+          <label htmlFor="verification-evidence" className="block mb-2 text-slate-200">Evidence supporting this action</label>
+          <select id="verification-evidence" required value={evidenceReportId} onChange={e => setEvidenceReportId(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white">
+            <option value="">Select a fresh, analyzed report</option>
+            {incident.reports.filter(r => !r.excludedFromQuorum && r.analysisStatus === 'COMPLETE' && (action === 'CLEAR' ? r.claim === 'CLEAR' : r.claim !== 'CLEAR')).map(r => <option key={r.id} value={r.id}>{r.reporterName} · {r.claim} · {new Date(r.observedAt).toLocaleTimeString()}</option>)}
+          </select>
+          <p className="mt-2 text-slate-400">The backend checks evidence freshness, apparent passability, and the selected profiles.</p>
+        </div>}
         {/* Profile Controls for CONFIRM_BLOCKED */}
         {action === 'CONFIRM_BLOCKED' && (
           <div className="bg-slate-950/70 p-3 rounded-lg border border-slate-800 space-y-2">
@@ -177,10 +190,12 @@ export const VerificationPanel: React.FC<VerificationPanelProps> = ({
 
         {/* Reason text */}
         <div>
-          <label className="text-slate-300 font-semibold block mb-1">
+          <label htmlFor="moderation-reason" className="text-slate-300 font-semibold block mb-1">
             Moderation Reason &amp; Audit Note
           </label>
           <textarea
+            id="moderation-reason"
+            maxLength={1000}
             required
             rows={2}
             value={reason}

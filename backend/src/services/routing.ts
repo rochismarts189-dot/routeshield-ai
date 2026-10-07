@@ -1,3 +1,5 @@
+import { AppError } from '../lib/errors.js';
+import { hasUsableObstruction } from './incidents.js';
 import { EdgeRecord, NodeRecord } from '../repositories/network.js';
 import { IncidentRecord } from '../repositories/incidents.js';
 import { ReportRecord } from '../repositories/reports.js';
@@ -208,7 +210,7 @@ export function planRoute(
   const destNode = nodeMap.get(destinationId);
 
   if (!originNode || !destNode) {
-    throw new Error('Invalid origin or destination node ID');
+    throw new AppError(400, 'INVALID_NODE', 'Select an origin and destination in Maple Ward.');
   }
 
   const adj = buildAdjacencyList(edges);
@@ -265,7 +267,7 @@ export function planRoute(
       if (profile === 'STEP_FREE' && inc.status === 'UNVERIFIED') {
         const edgeReports = reportsMap.get(inc.id) || [];
         const hasCompletedObstruction = edgeReports.some((r) => {
-          if (r.excluded_from_quorum || r.analysis_status !== 'COMPLETE' || !r.analysis_json) {
+          if (!hasUsableObstruction(r) || !r.analysis_json) {
             return false;
           }
           const pass = r.analysis_json.passability.step_free;
@@ -282,11 +284,13 @@ export function planRoute(
     return true;
   };
 
-  const currentRoute = runDijkstra(originId, destinationId, adj, currentIsAllowed);
+  // Compute every exclusion before traversal so explanations do not depend on search order.
+  for (const list of adj.values()) for (const edge of list) currentIsAllowed(edge);
+  const currentRoute = runDijkstra(originId, destinationId, adj, e => !excludedEdges[e.edgeId]);
 
   // Check warnings for baseline links that were affected or avoided
   if (baseline) {
-    for (const edgeId of baseline.edgeIds) {
+    for (const edgeId of new Set([...baseline.edgeIds, ...(currentRoute?.edgeIds || [])])) {
       const inc = activeIncidentsByEdge.get(edgeId);
       if (inc) {
         if (excludedEdges[edgeId]) {
@@ -314,7 +318,7 @@ export function planRoute(
       route: null,
       baselineNodeIds: baseline?.nodeIds || [],
       baselineEdgeIds: baseline?.edgeIds || [],
-      baselineDistanceMeters: baseline?.totalDistance || null,
+      baselineDistanceMeters: baseline?.totalDistance ?? null,
       excludedEdges,
       warnings,
       explanation: noRouteMsg,
@@ -356,7 +360,7 @@ export function planRoute(
   const baselineDist = baseline ? baseline.totalDistance : currentRoute.totalDistance;
   const diffMeters = currentRoute.totalDistance - baselineDist;
 
-  let explanation = `Direct route of ${currentRoute.totalDistance}m along scheduled pathways.`;
+  let explanation = `Direct route of ${currentRoute.totalDistance}m on the Maple Ward demonstration network.`;
   if (diffMeters > 0) {
     explanation = `Detour route of ${currentRoute.totalDistance}m (+${diffMeters}m compared to ${baselineDist}m baseline) navigating around active obstructions or non-step-free segments.`;
   } else if (diffMeters < 0) {

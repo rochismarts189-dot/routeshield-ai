@@ -45,13 +45,13 @@ export const geminiAnalysisSchema = z.object({
   passability: z.object({
     general_walk: GeneralWalkPassabilityEnum,
     step_free: StepFreePassabilityEnum,
-  }),
+  }).strict(),
   evidence_quality: EvidenceQualityEnum,
   description_consistency: DescriptionConsistencyEnum,
   observations: z.array(z.string().min(1).max(200)).min(1).max(5),
   confidence: z.number().min(0).max(1),
   uncertainty_reasons: z.array(z.string().min(1).max(200)).min(0).max(5),
-});
+}).strict();
 
 export type GeminiAnalysis = z.infer<typeof geminiAnalysisSchema>;
 

@@ -1,3 +1,4 @@
+import { closePool } from '../src/config/db.js';
 import dotenv from 'dotenv';
 import { createUser, findUserByEmail, hashPassword } from '../src/repositories/users.js';
 
@@ -14,7 +15,7 @@ async function main() {
     process.exit(1);
   }
 
-  if (password.length < 12 || password.length > 128) {
+  if (password.length < 12 || password.length > 128 || Buffer.byteLength(password) > 72) {
     console.error('Error: MODERATOR_PASSWORD must be between 12 and 128 characters.');
     process.exit(1);
   }
@@ -42,7 +43,4 @@ async function main() {
   process.exit(0);
 }
 
-main().catch((err) => {
-  console.error('Failed to create moderator:', err);
-  process.exit(1);
-});
+main().catch(() => { console.error('Moderator creation failed. Check database configuration and credentials.'); process.exitCode = 1; }).finally(closePool);

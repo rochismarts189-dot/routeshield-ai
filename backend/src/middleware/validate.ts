@@ -25,6 +25,17 @@ export function validateBody(schema: ZodSchema) {
   };
 }
 
+export function validateIdParam(name = 'id') {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const value = req.params[name];
+    if (typeof value !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) {
+      res.status(400).json({ error: { code: 'INVALID_ID', message: 'A valid record ID is required.' } });
+      return;
+    }
+    next();
+  };
+}
+
 export function validateQuery(schema: ZodSchema) {
   return (req: Request, res: Response, next: NextFunction): void => {
     try {

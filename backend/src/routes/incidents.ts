@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { requireAuth, requireModerator } from '../middleware/auth.js';
-import { validateBody, validateQuery } from '../middleware/validate.js';
+import { validateBody, validateQuery, validateIdParam } from '../middleware/validate.js';
 import { verifyIncidentSchema } from '../schemas/verification.js';
 import {
   listIncidents,
@@ -62,7 +62,7 @@ router.get('/', validateQuery(listQuerySchema), async (req, res, next) => {
 });
 
 // GET /incidents/:id - Public sanitized detailed incident
-router.get('/:id', async (req, res, next) => {
+router.get('/:id', validateIdParam(), async (req, res, next) => {
   try {
     const incidentId = req.params.id;
     const incident = await findIncidentById(incidentId);
@@ -85,15 +85,16 @@ router.get('/:id', async (req, res, next) => {
     // Sign photo URLs with short expiration (1 hour)
     const sanitizedReports = await Promise.all(
       reports.map(async (rep) => {
-        let signedUrl = '';
+        let signedUrl: string | null = null;
         try {
-          signedUrl = await getSignedPhotoUrl(rep.photo_key, 3600);
+          signedUrl = await getSignedPhotoUrl(rep.photo_key, 600);
         } catch {
-          signedUrl = `/placeholder/${rep.photo_key}`;
+          signedUrl = null;
         }
 
         return {
           id: rep.id,
+          reporterId: rep.reporter_id,
           reporterName: rep.reporter_name || 'Community Member',
           claim: rep.claim,
           description: rep.description,
@@ -165,6 +166,7 @@ router.get('/:id', async (req, res, next) => {
 // POST /incidents/:id/verify - Moderator only verification
 router.post(
   '/:id/verify',
+  validateIdParam(),
   requireAuth,
   requireModerator,
   validateBody(verifyIncidentSchema),

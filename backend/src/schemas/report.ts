@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const createReportSchema = z.object({
-  edgeId: z.string().min(1, 'Edge selection is required'),
+  edgeId: z.string().regex(/^[A-Z]{2}$/, 'Select a known pedestrian segment.'),
   incidentId: z.string().uuid().optional(),
   claim: z.enum(['BLOCKED', 'CLEAR', 'UNCERTAIN'], {
     required_error: 'Claim (BLOCKED, CLEAR, or UNCERTAIN) is required',
@@ -25,7 +25,7 @@ export const createReportSchema = z.object({
     }, {
       message: 'Observed timestamp must be within the last 24 hours and not in the future',
     }),
-});
+}).strict();
 
 export const retryAnalysisSchema = z.object({});
 

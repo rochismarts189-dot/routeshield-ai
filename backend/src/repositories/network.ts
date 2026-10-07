@@ -1,3 +1,4 @@
+import pg from 'pg';
 import { query } from '../config/db.js';
 
 export interface NodeRecord {
@@ -19,8 +20,8 @@ export interface EdgeRecord {
   has_steps: boolean;
 }
 
-export async function getAllNodes(): Promise<NodeRecord[]> {
-  const res = await query<NodeRecord>(
+export async function getAllNodes(client?: pg.PoolClient): Promise<NodeRecord[]> {
+  const res = await (client ? client.query.bind(client) : query)<NodeRecord>(
     `SELECT id, name, latitude, longitude, map_x, map_y
      FROM routeshield.nodes
      ORDER BY id ASC;`
@@ -28,8 +29,8 @@ export async function getAllNodes(): Promise<NodeRecord[]> {
   return res.rows;
 }
 
-export async function getAllEdges(): Promise<EdgeRecord[]> {
-  const res = await query<EdgeRecord>(
+export async function getAllEdges(client?: pg.PoolClient): Promise<EdgeRecord[]> {
+  const res = await (client ? client.query.bind(client) : query)<EdgeRecord>(
     `SELECT id, from_node, to_node, name, length_m, step_free_status, has_steps
      FROM routeshield.edges
      ORDER BY id ASC;`

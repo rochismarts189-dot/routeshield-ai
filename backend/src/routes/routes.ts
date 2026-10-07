@@ -1,3 +1,4 @@
+import { withTransaction } from '../config/db.js';
 import { Router } from 'express';
 import { validateBody } from '../middleware/validate.js';
 import { planRouteSchema } from '../schemas/route.js';
@@ -12,10 +13,11 @@ router.post('/plan', validateBody(planRouteSchema), async (req, res, next) => {
   try {
     const { originId, destinationId, profile } = req.body;
 
+    const plan = await withTransaction(async client => {
     const [nodes, edges, allIncidents] = await Promise.all([
-      getAllNodes(),
-      getAllEdges(),
-      listIncidents({}),
+      getAllNodes(client),
+      getAllEdges(client),
+      listIncidents({}, client),
     ]);
 
     // Active incidents
@@ -27,12 +29,12 @@ router.post('/plan', validateBody(planRouteSchema), async (req, res, next) => {
     const reportsMap = new Map<string, ReportRecord[]>();
     await Promise.all(
       activeIncidents.map(async (inc) => {
-        const reps = await listReportsForIncident(inc.id);
+        const reps = await listReportsForIncident(inc.id, client);
         reportsMap.set(inc.id, reps);
       })
     );
 
-    const plan = planRoute(
+    return planRoute(
       originId,
       destinationId,
       profile,
@@ -42,6 +44,7 @@ router.post('/plan', validateBody(planRouteSchema), async (req, res, next) => {
       reportsMap
     );
 
+    }, true);
     res.status(200).json(plan);
   } catch (err) {
     next(err);

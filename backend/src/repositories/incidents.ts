@@ -65,7 +65,7 @@ export async function findIncidentById(id: string): Promise<IncidentRecord | nul
 export async function listIncidents(filters: {
   status?: string;
   edgeId?: string;
-}): Promise<IncidentRecord[]> {
+}, client?: pg.PoolClient): Promise<IncidentRecord[]> {
   const conditions: string[] = [];
   const params: any[] = [];
 
@@ -81,7 +81,7 @@ export async function listIncidents(filters: {
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-  const res = await query<IncidentRecord>(
+  const res = await (client ? client.query.bind(client) : query)<IncidentRecord>(
     `SELECT i.*, e.name as edge_name
      FROM routeshield.incidents i
      JOIN routeshield.edges e ON i.edge_id = e.id
@@ -178,7 +178,7 @@ export async function touchIncidentEvidenceTime(
   await client.query(
     `UPDATE routeshield.incidents
      SET last_evidence_at = now(),
-         updated_at = now()
+         updated_at = now(), version = version + 1
      WHERE id = $1;`,
     [incidentId]
   );

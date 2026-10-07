@@ -31,7 +31,7 @@ export function signUserToken(user: AuthUser): string {
       algorithm: 'HS256',
       issuer: env.JWT_ISSUER,
       audience: env.JWT_AUDIENCE,
-      expiresIn: '8h',
+      expiresIn: '2h',
     }
   );
 }
@@ -50,12 +50,19 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 
   const token = authHeader.substring(7);
 
+  let decoded: jwt.JwtPayload;
   try {
-    const decoded = jwt.verify(token, env.JWT_SECRET, {
+    decoded = jwt.verify(token, env.JWT_SECRET, {
       algorithms: ['HS256'],
       issuer: env.JWT_ISSUER,
       audience: env.JWT_AUDIENCE,
-    }) as any;
+    }) as jwt.JwtPayload;
+    if (typeof decoded.sub !== 'string' || !/^[0-9a-f-]{36}$/i.test(decoded.sub)) throw new Error('Invalid subject');
+  } catch {
+    res.status(401).json({ error: { code: 'INVALID_TOKEN', message: 'Invalid or expired token' } });
+    return;
+  }
+  try {
 
     // Load fresh user data from database
     const user = await findUserById(decoded.sub);
@@ -77,14 +84,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     };
 
     next();
-  } catch (err: any) {
-    res.status(401).json({
-      error: {
-        code: 'INVALID_TOKEN',
-        message: 'Invalid or expired token',
-      },
-    });
-  }
+  } catch (err) { next(err); }
 }
 
 export function requireModerator(req: Request, res: Response, next: NextFunction): void {

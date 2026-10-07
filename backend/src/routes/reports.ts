@@ -1,337 +1,127 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
 import crypto from 'crypto';
 import rateLimit from 'express-rate-limit';
 import { requireAuth, requireModerator } from '../middleware/auth.js';
 import { handleUpload } from '../middleware/upload.js';
-import { validateBody } from '../middleware/validate.js';
+import { validateBody, validateIdParam } from '../middleware/validate.js';
 import { createReportSchema, excludeReportSchema } from '../schemas/report.js';
 import { processAndNormalizePhoto } from '../services/evidence.js';
-import { uploadEvidencePhoto, getEvidencePhotoBuffer } from '../config/storage.js';
-import { analyzeEvidencePhoto } from '../services/gemini.js';
-import {
-  findActiveIncidentByEdgeId,
-  createIncident,
-  findIncidentById,
-  lockEdgeRow,
-  touchIncidentEvidenceTime,
-} from '../repositories/incidents.js';
-import {
-  createReport,
-  findReportById,
-  findReportBySha256,
-  updateReportAnalysis,
-  setReportExclusion,
-} from '../repositories/reports.js';
-import { evaluateIncidentState } from '../services/incidents.js';
+import { uploadEvidencePhoto, getEvidencePhotoBuffer, removeEvidencePhoto } from '../config/storage.js';
+import { analyzeEvidencePhoto, AnalysisResult } from '../services/gemini.js';
+import { findActiveIncidentByEdgeId, createIncident, findIncidentById, lockEdgeRow, touchIncidentEvidenceTime } from '../repositories/incidents.js';
+import { createReport, findReportById, findReportBySha256, updateReportAnalysis, setReportExclusion, reserveProviderAttempt } from '../repositories/reports.js';
+import { createIncidentEvent } from '../repositories/events.js';
+import { evaluateIncidentState, lockIncident } from '../services/incidents.js';
 import { getAllNodes, getEdgeById } from '../repositories/network.js';
 import { withTransaction, query } from '../config/db.js';
+import { AppError } from '../lib/errors.js';
 
 const router = Router();
+const reportLimiter = rateLimit({ windowMs: 10 * 60_000, max: 10, standardHeaders: true, legacyHeaders: false,
+  message: { error: { code: 'TOO_MANY_REPORTS', message: 'Please wait before submitting more evidence.' } } });
+const accountLimiter = rateLimit({ windowMs: 10 * 60_000, max: 5, keyGenerator: req => req.user!.id,
+  standardHeaders: true, legacyHeaders: false, message: { error: { code: 'TOO_MANY_REPORTS', message: 'Your evidence limit is reached. Please wait ten minutes.' } } });
 
-// Rate limiting: 10 reports per 10 min
-const reportLimiter = rateLimit({
-  windowMs: 10 * 60 * 1000,
-  max: 10,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: {
-    error: {
-      code: 'TOO_MANY_REPORTS',
-      message: 'Report submission rate limit reached. Please wait a few minutes before submitting another report.',
-    },
-  },
+async function finalize(reportId: string, incidentId: string, result: AnalysisResult) {
+  return withTransaction(async client => {
+    await lockIncident(client, incidentId);
+    await updateReportAnalysis(client, { id: reportId, status: result.success ? 'COMPLETE' : 'FAILED', model: result.model,
+      analysisJson: result.analysis, errorCode: result.errorCode });
+    return evaluateIncidentState(client, incidentId);
+  });
+}
+
+router.post('/', requireAuth, reportLimiter, accountLimiter, handleUpload, async (req, res, next) => {
+  let uploadedKey: string | null = null;
+  let saved = false;
+  try {
+    if (!req.file) throw new AppError(400, 'PHOTO_REQUIRED', 'A JPEG or PNG photograph is required.');
+    const parsed = createReportSchema.safeParse(req.body);
+    if (!parsed.success) throw new AppError(400, 'VALIDATION_ERROR', 'Invalid report data', parsed.error.flatten());
+    const { edgeId, incidentId, claim, description, observedAt } = parsed.data;
+    const processed = await processAndNormalizePhoto(req.file.buffer, req.file.mimetype);
+    const duplicate = await findReportBySha256(processed.sha256Hex);
+    if (duplicate) throw new AppError(409, 'DUPLICATE_PHOTO', 'This photograph was already submitted.', { existingIncidentId: duplicate.incident_id });
+    const edge = await getEdgeById(edgeId);
+    if (!edge) throw new AppError(400, 'INVALID_EDGE', 'Select a known pedestrian segment.');
+    const nodes = await getAllNodes();
+    const from = nodes.find(n => n.id === edge.from_node)!;
+    const to = nodes.find(n => n.id === edge.to_node)!;
+    if (!from || !to) throw new AppError(503, 'NETWORK_INCOMPLETE', 'The demonstration network needs its migrations.');
+    uploadedKey = `${crypto.randomUUID()}.jpg`;
+    await uploadEvidencePhoto(uploadedKey, processed.normalizedBuffer, processed.contentType);
+    const photoKey = uploadedKey;
+    const report = await withTransaction(async client => {
+      await lockEdgeRow(client, edgeId);
+      let active = await findActiveIncidentByEdgeId(client, edgeId);
+      if (incidentId && active?.id !== incidentId) throw new AppError(409, 'INCIDENT_CHANGED', 'The selected incident is no longer active. Refresh before submitting.');
+      if (claim === 'CLEAR' && !active) throw new AppError(400, 'NO_ACTIVE_INCIDENT', 'Clearance evidence requires an active incident.');
+      if (!active) {
+        const last = await client.query('SELECT cleared_at FROM routeshield.incidents WHERE edge_id = $1 AND status = $2 ORDER BY cleared_at DESC LIMIT 1', [edgeId, 'CLEARED']);
+        if (last.rows[0] && new Date(observedAt).getTime() <= new Date(last.rows[0].cleared_at).getTime()) {
+          throw new AppError(400, 'STALE_EVIDENCE', 'Submit an observation made after this segment was last cleared.');
+        }
+        active = await createIncident(client, { edgeId, createdBy: req.user!.id });
+      }
+      const created = await createReport(client, { incidentId: active.id, reporterId: req.user!.id, claim, description, photoKey,
+        photoSha256: processed.sha256Hex, contentType: processed.contentType, byteCount: processed.byteCount,
+        latitude: (Number(from.latitude) + Number(to.latitude)) / 2, longitude: (Number(from.longitude) + Number(to.longitude)) / 2, observedAt });
+      await touchIncidentEvidenceTime(client, active.id);
+      await createIncidentEvent(client, { incidentId: active.id, actorId: req.user!.id, fromStatus: active.status,
+        toStatus: active.status, reasonCode: 'EVIDENCE_RECEIVED', metadata: { reportId: created.id, claim } });
+      return created;
+    });
+    saved = true;
+    const result = await analyzeEvidencePhoto({ imageBuffer: processed.normalizedBuffer, mimeType: processed.contentType,
+      edgeLabel: edge.name, claim, description, beforeAttempt: () => reserveProviderAttempt(report.id) });
+    const incident = await finalize(report.id, report.incident_id, result);
+    res.status(201).json({ reportId: report.id, incidentId: incident.id, analysisStatus: result.success ? 'COMPLETE' : 'FAILED',
+      incidentStatus: incident.status, analysis: result.analysis, errorCode: result.errorCode });
+  } catch (err: any) {
+    if (uploadedKey && !saved) await removeEvidencePhoto(uploadedKey).catch(() => console.warn('Evidence cleanup failed'));
+    if (err.code === '23505') next(new AppError(409, 'DUPLICATE_PHOTO', 'This evidence was submitted concurrently. Refresh the incident list.'));
+    else next(err);
+  }
 });
 
-router.post(
-  '/',
-  requireAuth,
-  reportLimiter,
-  handleUpload,
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      if (!req.file) {
-        res.status(400).json({
-          error: {
-            code: 'PHOTO_REQUIRED',
-            message: 'A photograph is required as visual evidence',
-          },
-        });
-        return;
-      }
-
-      // Validate textual body fields
-      const parsedBody = createReportSchema.safeParse(req.body);
-      if (!parsedBody.success) {
-        res.status(400).json({
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Invalid report data',
-            details: parsedBody.error.errors.map((e) => ({
-              path: e.path.join('.'),
-              message: e.message,
-            })),
-          },
-        });
-        return;
-      }
-
-      const { edgeId, claim, description, observedAt } = parsedBody.data;
-      const reporterId = req.user!.id;
-
-      // 1. Process and normalize image
-      const processed = await processAndNormalizePhoto(req.file.buffer, req.file.mimetype);
-
-      // 2. Check duplicate photo hash
-      const duplicate = await findReportBySha256(processed.sha256Hex);
-      if (duplicate) {
-        res.status(409).json({
-          error: {
-            code: 'DUPLICATE_PHOTO',
-            message: 'This exact photograph has already been submitted as evidence',
-            details: {
-              existingIncidentId: duplicate.incident_id,
-              existingReportId: duplicate.id,
-            },
-          },
-        });
-        return;
-      }
-
-      // 3. Verify edge and calculate segment midpoint
-      const edge = await getEdgeById(edgeId);
-      if (!edge) {
-        res.status(400).json({
-          error: {
-            code: 'INVALID_EDGE',
-            message: 'Selected pedestrian segment does not exist',
-          },
-        });
-        return;
-      }
-
-      const allNodes = await getAllNodes();
-      const fromNode = allNodes.find((n) => n.id === edge.from_node);
-      const toNode = allNodes.find((n) => n.id === edge.to_node);
-      const midLat = fromNode && toNode ? (fromNode.latitude + toNode.latitude) / 2 : 12.0;
-      const midLng = fromNode && toNode ? (fromNode.longitude + toNode.longitude) / 2 : 77.0;
-
-      // 4. Stale clearance check
-      const lastClearedRes = await query(
-        `SELECT cleared_at FROM routeshield.incidents
-         WHERE edge_id = $1 AND status = 'CLEARED'
-         ORDER BY cleared_at DESC LIMIT 1;`,
-        [edgeId]
-      );
-      if (lastClearedRes.rows.length > 0) {
-        const clearedAt = new Date(lastClearedRes.rows[0].cleared_at).getTime();
-        const obsTime = new Date(observedAt).getTime();
-        if (obsTime <= clearedAt) {
-          const activeCheck = await findActiveIncidentByEdgeId(query as any, edgeId);
-          if (!activeCheck) {
-            res.status(400).json({
-              error: {
-                code: 'STALE_EVIDENCE',
-                message: 'This segment was previously cleared after the claimed observation time. Please submit a fresh observation.',
-              },
-            });
-            return;
-          }
-        }
-      }
-
-      // Check active incident for CLEAR claim requirement
-      const existingActive = await findActiveIncidentByEdgeId(query as any, edgeId);
-      if (claim === 'CLEAR' && !existingActive) {
-        res.status(400).json({
-          error: {
-            code: 'NO_ACTIVE_INCIDENT',
-            message: 'A CLEAR claim requires an existing active incident on this segment to review clearance',
-          },
-        });
-        return;
-      }
-
-      // 5. Store image in private Supabase Storage
-      const photoKey = `${Date.now()}-${crypto.randomUUID()}.jpg`;
-      await uploadEvidencePhoto(photoKey, processed.normalizedBuffer, processed.contentType);
-
-      // 6. DB Transaction 1: Create incident (if not active) and attach PENDING report
-      const { createdReport, targetIncidentId } = await withTransaction(async (client) => {
-        await lockEdgeRow(client, edgeId);
-
-        let activeInc = await findActiveIncidentByEdgeId(client, edgeId);
-        if (!activeInc) {
-          activeInc = await createIncident(client, {
-            edgeId,
-            createdBy: reporterId,
-          });
-        }
-
-        const report = await createReport(client, {
-          incidentId: activeInc.id,
-          reporterId,
-          claim,
-          description,
-          photoKey,
-          photoSha256: processed.sha256Hex,
-          contentType: processed.contentType,
-          byteCount: processed.byteCount,
-          latitude: midLat,
-          longitude: midLng,
-          observedAt,
-        });
-
-        await touchIncidentEvidenceTime(client, activeInc.id);
-
-        return { createdReport: report, targetIncidentId: activeInc.id };
-      });
-
-      // 7. Gemini Multimodal AI call OUTSIDE transaction
-      const analysisResult = await analyzeEvidencePhoto({
-        imageBuffer: processed.normalizedBuffer,
-        mimeType: processed.contentType,
-        edgeLabel: edge.name,
-        claim,
-        description,
-      });
-
-      // 8. DB Transaction 2: Persist analysis outcome and evaluate incident status
-      const updatedIncident = await withTransaction(async (client) => {
-        await updateReportAnalysis(client, {
-          id: createdReport.id,
-          status: analysisResult.success ? 'COMPLETE' : 'FAILED',
-          model: analysisResult.model,
-          analysisJson: analysisResult.analysis,
-          errorCode: analysisResult.errorCode,
-        });
-
-        return evaluateIncidentState(client, targetIncidentId);
-      });
-
-      res.status(201).json({
-        reportId: createdReport.id,
-        incidentId: targetIncidentId,
-        analysisStatus: analysisResult.success ? 'COMPLETE' : 'FAILED',
-        incidentStatus: updatedIncident.status,
-        analysis: analysisResult.analysis,
-        errorCode: analysisResult.errorCode,
-      });
-    } catch (err) {
-      next(err);
-    }
-  }
-);
-
-// Retry analysis for failed report
-router.post('/:id/retry-analysis', requireAuth, async (req, res, next) => {
+router.post('/:id/retry-analysis', requireAuth, validateIdParam(), accountLimiter, async (req, res, next) => {
+  let claimedId: string | null = null;
   try {
-    const reportId = req.params.id as string;
-    const report = await findReportById(reportId);
-
-    if (!report) {
-      res.status(404).json({
-        error: {
-          code: 'REPORT_NOT_FOUND',
-          message: 'Report not found',
-        },
-      });
-      return;
-    }
-
-    // Only report owner or moderator can retry
-    if (report.reporter_id !== req.user!.id && req.user!.role !== 'MODERATOR') {
-      res.status(403).json({
-        error: {
-          code: 'FORBIDDEN',
-          message: 'Only the reporter or a moderator may retry analysis for this report',
-        },
-      });
-      return;
-    }
-
-    if (report.analysis_attempts >= 3) {
-      res.status(400).json({
-        error: {
-          code: 'MAX_ATTEMPTS_EXCEEDED',
-          message: 'Maximum lifetime analysis attempts (3) reached for this report',
-        },
-      });
-      return;
-    }
-
+    const report = await findReportById(req.params.id);
+    if (!report) throw new AppError(404, 'REPORT_NOT_FOUND', 'Report not found');
+    if (report.reporter_id !== req.user!.id && req.user!.role !== 'MODERATOR') throw new AppError(403, 'FORBIDDEN', 'Only the reporter or moderator can retry.');
+    const claimed = await query(`UPDATE routeshield.reports SET analysis_status = 'PENDING', analysis_error_code = NULL
+      WHERE id = $1 AND analysis_status = 'FAILED' AND analysis_attempts < 3 RETURNING id`, [report.id]);
+    if (!claimed.rows.length) throw new AppError(409, 'RETRY_UNAVAILABLE', 'Analysis is complete, already running, or reached its three-attempt limit.');
+    claimedId = report.id;
     const incident = await findIncidentById(report.incident_id);
-    const edge = incident ? await getEdgeById(incident.edge_id) : null;
-
-    // Retry Gemini inference by retrieving stored evidence photo buffer
-    const storedBuffer = await getEvidencePhotoBuffer(report.photo_key);
-    const analysisResult = await analyzeEvidencePhoto({
-      imageBuffer: storedBuffer || Buffer.alloc(0),
-      mimeType: report.content_type,
-      edgeLabel: edge?.name || 'Pedestrian Link',
-      claim: report.claim,
-      description: report.description,
-    });
-
-    const updatedIncident = await withTransaction(async (client) => {
-      await updateReportAnalysis(client, {
-        id: report.id,
-        status: analysisResult.success ? 'COMPLETE' : 'FAILED',
-        model: analysisResult.model,
-        analysisJson: analysisResult.analysis,
-        errorCode: analysisResult.errorCode,
-      });
-
-      return evaluateIncidentState(client, report.incident_id);
-    });
-
-    res.status(200).json({
-      reportId: report.id,
-      analysisStatus: analysisResult.success ? 'COMPLETE' : 'FAILED',
-      incidentStatus: updatedIncident.status,
-      analysis: analysisResult.analysis,
-      errorCode: analysisResult.errorCode,
-    });
+    const edge = await getEdgeById(incident!.edge_id);
+    const buffer = await getEvidencePhotoBuffer(report.photo_key);
+    const result = await analyzeEvidencePhoto({ imageBuffer: buffer, mimeType: report.content_type, edgeLabel: edge!.name,
+      claim: report.claim, description: report.description, maxAttempts: 3 - report.analysis_attempts,
+      beforeAttempt: () => reserveProviderAttempt(report.id) });
+    const updated = await finalize(report.id, report.incident_id, result);
+    claimedId = null;
+    res.json({ reportId: report.id, analysisStatus: result.success ? 'COMPLETE' : 'FAILED', incidentStatus: updated.status,
+      analysis: result.analysis, errorCode: result.errorCode });
   } catch (err) {
+    if (claimedId) await query("UPDATE routeshield.reports SET analysis_status = 'FAILED', analysis_error_code = 'RETRY_FAILED' WHERE id = $1 AND analysis_status = 'PENDING'", [claimedId]).catch(() => {});
     next(err);
   }
 });
 
-// Moderator: exclude report from quorum
-router.post(
-  '/:id/exclude',
-  requireAuth,
-  requireModerator,
-  validateBody(excludeReportSchema),
-  async (req, res, next) => {
-    try {
-      const reportId = req.params.id as string;
-      const { reason } = req.body;
-
-      const report = await findReportById(reportId);
-      if (!report) {
-        res.status(404).json({
-          error: {
-            code: 'REPORT_NOT_FOUND',
-            message: 'Report not found',
-          },
-        });
-        return;
-      }
-
-      const updatedIncident = await withTransaction(async (client) => {
-        await setReportExclusion(client, reportId, true, reason);
-        return evaluateIncidentState(client, report.incident_id);
-      });
-
-      res.status(200).json({
-        message: 'Report excluded from quorum successfully',
-        reportId,
-        incidentStatus: updatedIncident.status,
-      });
-    } catch (err) {
-      next(err);
-    }
-  }
-);
-
+router.post('/:id/exclude', requireAuth, requireModerator, validateIdParam(), validateBody(excludeReportSchema), async (req, res, next) => {
+  try {
+    const report = await findReportById(req.params.id);
+    if (!report) throw new AppError(404, 'REPORT_NOT_FOUND', 'Report not found');
+    const incident = await withTransaction(async client => {
+      const current = await lockIncident(client, report.incident_id);
+      await setReportExclusion(client, report.id, true, req.body.reason);
+      await createIncidentEvent(client, { incidentId: current.id, actorId: req.user!.id, fromStatus: current.status,
+        toStatus: current.status, reasonCode: 'EVIDENCE_EXCLUDED', metadata: { reportId: report.id, reason: req.body.reason } });
+      return evaluateIncidentState(client, current.id);
+    });
+    res.json({ message: 'Evidence excluded from corroboration', reportId: report.id, incidentStatus: incident.status });
+  } catch (err) { next(err); }
+});
 export default router;

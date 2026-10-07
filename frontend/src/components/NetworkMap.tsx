@@ -23,20 +23,21 @@ export const NetworkMap: React.FC<NetworkMapProps> = ({
   onSelectNode,
 }) => {
   const nodeMap = new Map(nodes.map((n) => [n.id, n]));
-  const incidentMap = new Map(incidents.map((i) => [i.edgeId, i]));
+  const incidentMap = new Map<string, IncidentSummary>();
+  for (const incident of incidents) if (incident.status !== 'CLEARED' && !incident.dismissedAt && !incidentMap.has(incident.edgeId)) incidentMap.set(incident.edgeId, incident);
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-xl">
       <div className="flex items-center justify-between mb-3 text-xs text-slate-400">
         <h2 className="text-sm font-semibold text-slate-200">Demonstration Pedestrian Network Schematic</h2>
-        <span className="text-[11px] bg-slate-800 px-2 py-0.5 rounded border border-slate-700">SVG 600 × 400</span>
+        <span className="text-[11px] bg-slate-800 px-2 py-0.5 rounded border border-slate-700">Maple Ward</span>
       </div>
 
       <div className="relative w-full aspect-[6/4] bg-slate-950 rounded-lg overflow-hidden border border-slate-800 flex items-center justify-center">
         <svg
           viewBox="0 0 600 400"
           className="w-full h-full select-none"
-          role="img"
+          role="group"
           aria-label="Interactive map schematic of the 8 demonstration nodes and pedestrian walkways"
         >
           <defs>
@@ -105,12 +106,13 @@ export const NetworkMap: React.FC<NetworkMapProps> = ({
             return (
               <g
                 key={edge.id}
-                className="cursor-pointer transition-all hover:opacity-80 focus:outline-none"
+                className="cursor-pointer transition-all hover:opacity-80 focus:outline-emerald-400"
                 onClick={() => onSelectEdge && onSelectEdge(edge.id)}
-                role="button"
-                tabIndex={0}
+                role={onSelectEdge ? "button" : undefined}
+                tabIndex={onSelectEdge ? 0 : undefined}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
                     onSelectEdge && onSelectEdge(edge.id);
                   }
                 }}
@@ -164,12 +166,13 @@ export const NetworkMap: React.FC<NetworkMapProps> = ({
             return (
               <g
                 key={node.id}
-                className="cursor-pointer focus:outline-none"
+                className="cursor-pointer focus:outline-emerald-400"
                 onClick={() => onSelectNode && onSelectNode(node.id)}
-                role="button"
-                tabIndex={0}
+                role={onSelectNode ? "button" : undefined}
+                tabIndex={onSelectNode ? 0 : undefined}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
                     onSelectNode && onSelectNode(node.id);
                   }
                 }}

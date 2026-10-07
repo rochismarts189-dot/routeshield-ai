@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { planRoute } from '../src/services/routing.js';
-import { NodeRecord, EdgeRecord } from '../repositories/network.js';
-import { IncidentRecord } from '../repositories/incidents.js';
-import { ReportRecord } from '../repositories/reports.js';
+import { NodeRecord, EdgeRecord } from '../src/repositories/network.js';
+import { IncidentRecord } from '../src/repositories/incidents.js';
+import { ReportRecord } from '../src/repositories/reports.js';
 
 const DEMO_NODES: NodeRecord[] = [
   { id: 'A', name: 'Transit Stop', latitude: 12.0, longitude: 77.0, map_x: 40, map_y: 180 },

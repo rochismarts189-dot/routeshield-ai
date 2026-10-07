@@ -1,82 +1,67 @@
 import pg from 'pg';
 import {
-  findActiveIncidentByEdgeId,
-  createIncident,
+  lockEdgeRow,
   updateIncidentState,
   IncidentRecord,
 } from '../repositories/incidents.js';
 import {
   listReportsForIncident,
   ReportRecord,
-  setReportExclusion,
 } from '../repositories/reports.js';
 import { createIncidentEvent } from '../repositories/events.js';
+import { AppError } from '../lib/errors.js';
 import { VerifyIncidentInput } from '../schemas/verification.js';
 
+export function isFreshReport(report: ReportRecord): boolean {
+  return [report.observed_at, report.received_at].every(value => {
+    const age = Date.now() - new Date(value).getTime();
+    return Number.isFinite(age) && age >= -5 * 60_000 && age <= 30 * 60_000;
+  });
+}
+
+export function hasUsableObstruction(report: ReportRecord): boolean {
+  const a = report.analysis_json;
+  return !report.excluded_from_quorum && report.analysis_status === 'COMPLETE' && !!a &&
+    a.evidence_quality !== 'UNUSABLE' && a.description_consistency !== 'CONFLICTS' &&
+    !['NONE', 'UNKNOWN'].includes(a.obstruction_type) && report.claim !== 'CLEAR';
+}
+
 export function isQualifyingBlockReport(report: ReportRecord): boolean {
-  if (report.excluded_from_quorum) return false;
-  if (report.analysis_status !== 'COMPLETE' || !report.analysis_json) return false;
-
-  const analysis = report.analysis_json;
-  const isWithin30Min = (dateStr: string) => {
-    const diff = Math.abs(Date.now() - new Date(dateStr).getTime());
-    return diff <= 30 * 60 * 1000;
-  };
-
-  if (!isWithin30Min(report.observed_at) || !isWithin30Min(report.received_at)) {
-    return false;
-  }
-
-  if (analysis.evidence_quality !== 'CLEAR') return false;
-  if (analysis.visible_extent !== 'FULL_WIDTH') return false;
-  if (analysis.passability.general_walk !== 'BLOCKED') return false;
-  if (analysis.passability.step_free !== 'BLOCKED') return false;
-  if (analysis.description_consistency === 'CONFLICTS') return false;
-
-  return true;
+  const a = report.analysis_json;
+  return hasUsableObstruction(report) && isFreshReport(report) && !!a &&
+    a.evidence_quality === 'CLEAR' && a.visible_extent === 'FULL_WIDTH' &&
+    a.passability.general_walk === 'BLOCKED' && a.passability.step_free === 'BLOCKED';
 }
 
 export function isQualifyingClearReport(report: ReportRecord): boolean {
-  if (report.excluded_from_quorum) return false;
-  if (report.claim !== 'CLEAR') return false;
-  if (report.analysis_status !== 'COMPLETE' || !report.analysis_json) return false;
+  const a = report.analysis_json;
+  return !report.excluded_from_quorum && report.claim === 'CLEAR' &&
+    report.analysis_status === 'COMPLETE' && !!a && isFreshReport(report) &&
+    a.evidence_quality === 'CLEAR' && a.obstruction_type === 'NONE' &&
+    a.visible_extent === 'NONE' && a.passability.general_walk === 'APPEARS_CLEAR' &&
+    a.passability.step_free === 'APPEARS_CLEAR' && a.description_consistency !== 'CONFLICTS';
+}
 
-  const analysis = report.analysis_json;
-  const isWithin30Min = (dateStr: string) => {
-    const diff = Math.abs(Date.now() - new Date(dateStr).getTime());
-    return diff <= 30 * 60 * 1000;
-  };
-
-  if (!isWithin30Min(report.observed_at) || !isWithin30Min(report.received_at)) {
-    return false;
-  }
-
-  if (analysis.evidence_quality !== 'CLEAR') return false;
-  if (analysis.obstruction_type !== 'NONE') return false;
-  if (analysis.visible_extent !== 'NONE') return false;
-  if (analysis.passability.general_walk !== 'APPEARS_CLEAR') return false;
-  if (analysis.passability.step_free !== 'APPEARS_CLEAR') return false;
-  if (analysis.description_consistency === 'CONFLICTS') return false;
-
-  return true;
+// All mutation paths acquire the edge before the incident, preventing lock inversion.
+export async function lockIncident(client: pg.PoolClient, incidentId: string): Promise<IncidentRecord> {
+  const lookup = await client.query<IncidentRecord>('SELECT * FROM routeshield.incidents WHERE id = $1', [incidentId]);
+  if (!lookup.rows[0]) throw new AppError(404, 'INCIDENT_NOT_FOUND', 'Incident not found');
+  await lockEdgeRow(client, lookup.rows[0].edge_id);
+  const result = await client.query<IncidentRecord>('SELECT * FROM routeshield.incidents WHERE id = $1 FOR UPDATE', [incidentId]);
+  return result.rows[0];
 }
 
 export async function evaluateIncidentState(
   client: pg.PoolClient,
   incidentId: string
 ): Promise<IncidentRecord> {
-  const incidentRes = await client.query<IncidentRecord>(
-    `SELECT * FROM routeshield.incidents WHERE id = $1 FOR UPDATE;`,
-    [incidentId]
-  );
-  const incident = incidentRes.rows[0];
-  if (!incident) throw new Error('Incident not found');
+  const incident = await lockIncident(client, incidentId);
 
   if (incident.status === 'CLEARED' || incident.dismissed_at) {
     return incident;
   }
 
-  const reports = await listReportsForIncident(incidentId);
+  const reports = await listReportsForIncident(incidentId, client);
 
   // Group latest report per account
   const latestByAccount = new Map<string, ReportRecord>();
@@ -110,7 +95,7 @@ export async function evaluateIncidentState(
   let blockedGeneral = incident.blocked_general;
   let blockedStepFree = incident.blocked_step_free;
   let disputed = incident.disputed;
-  let requiresReview = incident.requires_review;
+  let requiresReview = incident.requires_review || reports.some(r => !r.excluded_from_quorum && (r.analysis_status === 'FAILED' || r.analysis_json?.description_consistency === 'CONFLICTS' || r.analysis_json?.evidence_quality === 'UNUSABLE'));
   let confirmedAt = incident.confirmed_at;
 
   // Clear evidence requires review, never auto-clears
@@ -166,22 +151,17 @@ export async function verifyIncidentAsModerator(
   moderatorId: string,
   input: VerifyIncidentInput
 ): Promise<IncidentRecord> {
-  const incidentRes = await client.query<IncidentRecord>(
-    `SELECT * FROM routeshield.incidents WHERE id = $1 FOR UPDATE;`,
-    [incidentId]
-  );
-  const incident = incidentRes.rows[0];
-  if (!incident) throw new Error('Incident not found');
-
+  const incident = await lockIncident(client, incidentId);
+  if (incident.status === 'CLEARED' || incident.dismissed_at) {
+    throw new AppError(409, 'INCIDENT_CLOSED', 'This incident is closed. Submit a fresh report for a new obstruction.');
+  }
   if (incident.version !== input.expectedVersion) {
-    const error = new Error('Incident state has been modified by another action. Please refresh.');
-    (error as any).code = 'CONFLICT';
-    throw error;
+    throw new AppError(409, 'CONFLICT', 'Incident changed. Refresh and review the latest evidence.');
   }
 
   if (input.action === 'DISMISS') {
     if (incident.status !== 'UNVERIFIED') {
-      throw new Error('Dismissal is only permitted for UNVERIFIED incidents');
+      throw new AppError(400, 'INVALID_MODERATION_ACTION', 'Dismissal is only permitted for UNVERIFIED incidents');
     }
     const updated = await updateIncidentState(client, {
       id: incident.id,
@@ -192,6 +172,8 @@ export async function verifyIncidentAsModerator(
       requiresReview: false,
       dismissedAt: new Date().toISOString(),
       moderationNote: input.reason,
+      confirmedAt: incident.confirmed_at,
+      clearedAt: incident.cleared_at,
       expectedVersion: input.expectedVersion,
     });
 
@@ -208,11 +190,10 @@ export async function verifyIncidentAsModerator(
 
   if (input.action === 'CLEAR') {
     // Requires fresh qualifying clear evidence and attestation
-    const reports = await listReportsForIncident(incident.id);
-    const qualifyingClears = reports.filter(isQualifyingClearReport);
-
-    if (qualifyingClears.length === 0) {
-      throw new Error('Clearing requires fresh qualifying clear evidence adhering to strict clear standards');
+    const reports = await listReportsForIncident(incident.id, client);
+    const evidence = reports.find(r => r.id === input.evidenceReportId);
+    if (input.attestation !== true || !evidence || !isQualifyingClearReport(evidence)) {
+      throw new AppError(400, 'INVALID_CLEARANCE_EVIDENCE', 'Select fresh qualifying clear evidence and attest that the entire segment was checked.');
     }
 
     const updated = await updateIncidentState(client, {
@@ -222,6 +203,7 @@ export async function verifyIncidentAsModerator(
       blockedStepFree: false,
       disputed: false,
       requiresReview: false,
+      confirmedAt: incident.confirmed_at,
       clearedAt: new Date().toISOString(),
       moderationNote: input.reason,
       expectedVersion: input.expectedVersion,
@@ -236,7 +218,7 @@ export async function verifyIncidentAsModerator(
       metadata: {
         reason: input.reason,
         attestation: true,
-        evidenceReportId: input.evidenceReportId || qualifyingClears[0].id,
+        evidenceReportId: input.evidenceReportId,
       },
     });
     return updated;
@@ -246,8 +228,12 @@ export async function verifyIncidentAsModerator(
     const blockedGeneral = input.blockedProfiles?.includes('GENERAL_WALK') || false;
     const blockedStepFree = input.blockedProfiles?.includes('STEP_FREE') || false;
 
-    if (!blockedGeneral && !blockedStepFree) {
-      throw new Error('At least one profile must be blocked for confirmation');
+    const reports = await listReportsForIncident(incident.id, client);
+    const evidence = reports.find(r => r.id === input.evidenceReportId);
+    if ((!blockedGeneral && !blockedStepFree) || !evidence || !hasUsableObstruction(evidence) || !isFreshReport(evidence) ||
+      (blockedGeneral && evidence.analysis_json!.passability.general_walk !== 'BLOCKED') ||
+      (blockedStepFree && !['BLOCKED', 'UNCERTAIN'].includes(evidence.analysis_json!.passability.step_free))) {
+      throw new AppError(400, 'INVALID_BLOCK_EVIDENCE', 'Select fresh usable obstruction evidence supporting every affected profile.');
     }
 
     const updated = await updateIncidentState(client, {
@@ -257,7 +243,8 @@ export async function verifyIncidentAsModerator(
       blockedStepFree,
       disputed: false,
       requiresReview: false,
-      confirmedAt: new Date().toISOString(),
+      confirmedAt: incident.confirmed_at || new Date().toISOString(),
+      clearedAt: incident.cleared_at,
       moderationNote: input.reason,
       expectedVersion: input.expectedVersion,
     });

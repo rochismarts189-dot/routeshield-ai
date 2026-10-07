@@ -1,69 +1,20 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import dotenv from 'dotenv';
-import pg from 'pg';
-
-dotenv.config();
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import fs from 'node:fs';
+import path from 'node:path';
+import { getPool, closePool } from '../src/config/db.js';
 
 async function main() {
-  const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl || databaseUrl.includes('your-db-password') || databaseUrl.includes('your-project')) {
-    console.error('Error: DATABASE_URL is not set or contains placeholder credentials in backend/.env');
-    console.error('Please configure your real Supabase PostgreSQL connection string in backend/.env');
-    process.exit(1);
-  }
-
-  console.log('Connecting to PostgreSQL database...');
-  const poolConfig: pg.PoolConfig = {
-    connectionString: databaseUrl,
-    connectionTimeoutMillis: 10000,
-  };
-
-  if (process.env.DATABASE_CA_CERT_BASE64) {
-    const caCert = Buffer.from(process.env.DATABASE_CA_CERT_BASE64, 'base64').toString('utf8');
-    poolConfig.ssl = { rejectUnauthorized: true, ca: caCert };
-  } else if (databaseUrl.includes('supabase.co') || databaseUrl.includes('sslmode=require')) {
-    poolConfig.ssl = { rejectUnauthorized: false };
-  }
-
-  const pool = new pg.Pool(poolConfig);
-  const client = await pool.connect();
-
+  const client = await getPool().connect();
   try {
-    const rootDir = path.resolve(__dirname, '../..');
-    const mig1Path = path.join(rootDir, 'supabase', 'migrations', '0001_init.sql');
-    const mig2Path = path.join(rootDir, 'supabase', 'migrations', '0002_demo_network.sql');
-
-    console.log(`Running migration 0001: ${mig1Path}...`);
-    const sql1 = fs.readFileSync(mig1Path, 'utf8');
-    await client.query(sql1);
-    console.log('✓ Migration 0001_init.sql executed successfully.');
-
-    console.log(`Running migration 0002: ${mig2Path}...`);
-    const sql2 = fs.readFileSync(mig2Path, 'utf8');
-    await client.query(sql2);
-    console.log('✓ Migration 0002_demo_network.sql executed successfully.');
-
-    // Verification
-    const nodesRes = await client.query('SELECT count(*) FROM routeshield.nodes;');
-    const edgesRes = await client.query('SELECT count(*) FROM routeshield.edges;');
-    console.log(`✓ Verification complete:`);
-    console.log(`  - Nodes populated: ${nodesRes.rows[0].count}`);
-    console.log(`  - Edges populated: ${edgesRes.rows[0].count}`);
-  } catch (err: any) {
-    console.error('Migration failed:', err.message || err);
-    process.exit(1);
-  } finally {
-    client.release();
-    await pool.end();
-  }
+    const migrationsDir = path.resolve(process.cwd(), '../supabase/migrations');
+    for (const name of fs.readdirSync(migrationsDir).filter(name => name.endsWith('.sql')).sort()) {
+      await client.query('BEGIN');
+      try { await client.query(fs.readFileSync(path.join(migrationsDir, name), 'utf8')); await client.query('COMMIT'); }
+      catch (err) { await client.query('ROLLBACK'); throw err; }
+      console.log(`Applied ${name}`);
+    }
+    const result = await client.query('SELECT (SELECT count(*) FROM routeshield.nodes) AS nodes, (SELECT count(*) FROM routeshield.edges) AS edges');
+    if (Number(result.rows[0].nodes) !== 8 || Number(result.rows[0].edges) !== 10) throw new Error('Demo network verification failed');
+    console.log('Verified Maple Ward: 8 nodes, 10 edges.');
+  } finally { client.release(); await closePool(); }
 }
-
-main().catch((err) => {
-  console.error('Fatal error during migration:', err);
-  process.exit(1);
-});
+main().catch(() => { console.error('Migration failed. Check the verified TLS connection, permissions, and SQL migrations.'); process.exitCode = 1; });

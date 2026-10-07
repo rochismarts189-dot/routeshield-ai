@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { Node, Edge, RoutePlan, RoutingProfile, IncidentSummary } from '../types';
 import { api, ApiError } from '../lib/api';
@@ -23,9 +23,10 @@ export const PlannerPage: React.FC = () => {
   const [originId, setOriginId] = useState<string>(searchParams.get('origin') || 'A');
   const [destinationId, setDestinationId] = useState<string>(searchParams.get('destination') || 'D');
   const [profile, setProfile] = useState<RoutingProfile>(
-    (searchParams.get('profile') as RoutingProfile) || 'STEP_FREE'
+    searchParams.get('profile') === 'GENERAL_WALK' ? 'GENERAL_WALK' : 'STEP_FREE'
   );
 
+  const routeRequest = useRef(0);
   const [plan, setPlan] = useState<RoutePlan | null>(null);
   const [loading, setLoading] = useState(false);
   const [networkLoading, setNetworkLoading] = useState(true);
@@ -62,17 +63,21 @@ export const PlannerPage: React.FC = () => {
       return;
     }
 
+    const requestId = ++routeRequest.current;
+    setPlan(null);
     setLoading(true);
     setError(null);
     try {
       const result = await api.planRoute(originId, destinationId, profile);
+      if (requestId !== routeRequest.current) return;
       setPlan(result);
       setSearchParams({ origin: originId, destination: destinationId, profile });
     } catch (err: any) {
+      if (requestId !== routeRequest.current) return;
       setError(err.message || 'Failed to compute route.');
       setPlan(null);
     } finally {
-      setLoading(false);
+      if (requestId === routeRequest.current) setLoading(false);
     }
   };
 
@@ -97,7 +102,7 @@ export const PlannerPage: React.FC = () => {
         </div>
 
         <Link
-          to={`/report?edgeId=${plan?.route?.edgeIds[0] || 'BC'}`}
+          to={`/report?edgeId=${'BC'}`}
           className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow-md transition-colors"
         >
           <Camera className="w-4 h-4" aria-hidden="true" />
@@ -105,6 +110,7 @@ export const PlannerPage: React.FC = () => {
         </Link>
       </div>
 
+      <button type="button" disabled={loading || networkLoading} onClick={async () => { await loadNetworkData(); await handleCalculateRoute(); }} className="text-sm text-emerald-300 underline">Refresh incidents and route</button>
       {/* Route Parameters Form */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -195,7 +201,7 @@ export const PlannerPage: React.FC = () => {
             <span>{error}</span>
           </div>
           <button
-            onClick={() => handleCalculateRoute()}
+            onClick={() => { loadNetworkData(); handleCalculateRoute(); }}
             className="px-3 py-1 bg-red-900/60 hover:bg-red-800 text-white rounded text-xs flex items-center gap-1 transition-colors"
           >
             <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
@@ -234,7 +240,7 @@ export const PlannerPage: React.FC = () => {
           </div>
 
           {/* Turn-by-turn Itinerary & Advisories Column */}
-          <div className="lg:col-span-6 space-y-4">
+          <div className="lg:col-span-6 space-y-4" aria-live="polite" aria-busy={loading}>
             {plan ? (
               <RouteItinerary plan={plan} />
             ) : (

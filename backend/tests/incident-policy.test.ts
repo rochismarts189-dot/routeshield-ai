@@ -3,7 +3,7 @@ import {
   isQualifyingBlockReport,
   isQualifyingClearReport,
 } from '../src/services/incidents.js';
-import { ReportRecord } from '../repositories/reports.js';
+import { ReportRecord } from '../src/repositories/reports.js';
 import { verifyIncidentSchema } from '../src/schemas/verification.js';
 
 describe('Incident Policy Rules', () => {
@@ -185,6 +185,7 @@ describe('Incident Policy Rules', () => {
     const invalidClear = verifyIncidentSchema.safeParse({
       action: 'CLEAR',
       expectedVersion: 1,
+      evidenceReportId: '11111111-1111-4111-8111-111111111111',
       attestation: false,
       reason: 'Looks open in picture',
     });
@@ -194,6 +195,7 @@ describe('Incident Policy Rules', () => {
     const validClear = verifyIncidentSchema.safeParse({
       action: 'CLEAR',
       expectedVersion: 1,
+      evidenceReportId: '11111111-1111-4111-8111-111111111111',
       attestation: true,
       reason: 'Physical on-site walk verified entire segment is clear',
     });
@@ -204,6 +206,7 @@ describe('Incident Policy Rules', () => {
     const invalidConfirm = verifyIncidentSchema.safeParse({
       action: 'CONFIRM_BLOCKED',
       expectedVersion: 1,
+      evidenceReportId: '11111111-1111-4111-8111-111111111111',
       blockedProfiles: [],
       reason: 'Blocking path',
     });
@@ -212,6 +215,7 @@ describe('Incident Policy Rules', () => {
     const validConfirm = verifyIncidentSchema.safeParse({
       action: 'CONFIRM_BLOCKED',
       expectedVersion: 1,
+      evidenceReportId: '11111111-1111-4111-8111-111111111111',
       blockedProfiles: ['STEP_FREE'],
       reason: 'Temporary curb ramp removed',
     });
