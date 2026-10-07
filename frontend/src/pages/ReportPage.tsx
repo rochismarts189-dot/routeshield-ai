@@ -48,10 +48,9 @@ export const ReportPage: React.FC = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      if (!['image/jpeg', 'image/png'].includes(file.type)) { setError('Choose a JPEG or PNG photograph.'); return; }
-      if (file.size > 5 * 1024 * 1024) {
-        setError('Selected photograph exceeds the 5MB limit.');
-        return;
+      if (!['image/jpeg', 'image/png'].includes(file.type) || file.size > 5 * 1024 * 1024) {
+        setSelectedFile(null); setPreviewUrl(null); e.target.value = '';
+        setError(file.size > 5 * 1024 * 1024 ? 'Selected photograph exceeds the 5MB limit.' : 'Choose a JPEG or PNG photograph.'); return;
       }
       setSelectedFile(file);
       setError(null);
@@ -75,7 +74,7 @@ export const ReportPage: React.FC = () => {
       return;
     }
 
-    if (!selectedEdgeId) {
+    if (!edges.some(edge => edge.id === selectedEdgeId)) {
       setError('Please select a pedestrian segment.');
       return;
     }
@@ -114,12 +113,10 @@ export const ReportPage: React.FC = () => {
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Page Title */}
       <div>
-        <h1 className="text-2xl font-black text-white flex items-center gap-2">
-          <Camera className="w-6 h-6 text-emerald-400" aria-hidden="true" />
-          <span>Submit Visual Community Evidence</span>
-        </h1>
-        <p className="text-sm text-slate-400 mt-1">
-          Photographs are analyzed by Gemini multimodal AI to detect obstructions and apparent passability.
+        <p className="eyebrow mb-3 flex items-center gap-2"><Camera className="w-4 h-4" aria-hidden="true" />Community evidence</p>
+        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">Make a barrier <span className="text-emerald-300">visible.</span></h1>
+        <p className="text-base leading-relaxed text-slate-400 mt-3">
+          Share what you see. Gemini interprets your photo, and the community helps verify how it affects a pedestrian journey.
         </p>
       </div>
 
@@ -164,7 +161,7 @@ export const ReportPage: React.FC = () => {
       <p className="text-sm text-slate-300">Maple Ward is a fictional demonstration network. Evidence is visible to other visitors through temporary image links. Avoid photographs containing faces or personal information.</p>
       {edges.length === 0 && error && <button type="button" onClick={() => api.getNetwork().then(data => { setEdges(data.edges); setError(null); }).catch(err => setError(err.message))}>Retry loading segments</button>}
       {/* Main Report Form */}
-      <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl space-y-5">
+      <form onSubmit={handleSubmit} className="surface p-6 sm:p-8 space-y-6">
         {error && (
           <div role="alert" className="bg-red-950/60 border border-red-800 text-red-200 p-4 rounded-lg text-sm flex items-center gap-2">
             <AlertTriangle className="w-5 h-5 text-red-400 shrink-0" aria-hidden="true" />
@@ -178,7 +175,7 @@ export const ReportPage: React.FC = () => {
             Visual Photograph Evidence (Max 5MB JPEG/PNG) *
           </label>
 
-          <div className="border-2 border-dashed border-slate-700 hover:border-slate-500 rounded-xl p-4 text-center transition-colors bg-slate-950/50">
+          <div className="border-2 border-dashed border-slate-700 hover:border-emerald-400/50 focus-within:border-emerald-300 focus-within:ring-2 focus-within:ring-emerald-300 rounded-xl p-4 text-center transition-colors bg-slate-950/50">
             {previewUrl ? (
               <div className="space-y-3">
                 <div className="max-h-64 aspect-video mx-auto rounded-lg overflow-hidden bg-slate-950 border border-slate-800">
@@ -227,10 +224,13 @@ export const ReportPage: React.FC = () => {
           </label>
           <select
             id="segment-select"
-            value={selectedEdgeId}
+            disabled={edges.length === 0 || Boolean(searchParams.get('incidentId'))}
+            value={edges.length ? selectedEdgeId : ''}
             onChange={(e) => setSelectedEdgeId(e.target.value)}
             className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
           >
+            {!edges.length && <option value="">Segments unavailable — retry the connection</option>}
+            {edges.length > 0 && !edges.some(edge => edge.id === selectedEdgeId) && <option value={selectedEdgeId}>Choose a known segment</option>}
             {edges.map((e) => (
               <option key={e.id} value={e.id}>
                 Segment {e.id}: {e.name} ({e.length_m}m{e.has_steps ? ', contains stairs' : ''})
@@ -238,7 +238,7 @@ export const ReportPage: React.FC = () => {
             ))}
           </select>
           <p className="text-[11px] text-slate-400 mt-1">
-            Note: Coordinates are assigned to the segment midpoint (SEGMENT_SELECTION mode), not GPS verified.
+            Choose the known walkway shown in your photo. Its location is reported by you and isn’t verified from the image.
           </p>
         </div>
 
@@ -302,7 +302,7 @@ export const ReportPage: React.FC = () => {
             className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
           <div className="flex justify-between text-[11px] text-slate-400 mt-1">
-            <span>Description is treated as untrusted evidence by Gemini AI.</span>
+            <span>Describe what’s visible and what may be out of view.</span>
             <span>{description.length} / 500</span>
           </div>
         </div>
@@ -318,7 +318,7 @@ export const ReportPage: React.FC = () => {
             <button
               type="submit"
               disabled={submitting || edges.length === 0}
-              className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg shadow-lg shadow-emerald-900/30 transition-colors flex items-center justify-center gap-2"
+              className="primary-button w-full py-3"
             >
               <Camera className="w-5 h-5" aria-hidden="true" />
               <span>Submit Report &amp; Run Gemini Analysis</span>

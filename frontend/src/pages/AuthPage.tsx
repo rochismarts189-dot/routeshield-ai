@@ -55,20 +55,20 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode }) => {
   return (
     <div className="max-w-md mx-auto py-10 space-y-6">
       <div className="text-center space-y-2">
-        <div className="w-12 h-12 rounded-xl bg-emerald-600 flex items-center justify-center text-white mx-auto shadow-lg shadow-emerald-900/50">
+        <div className="brand-mark w-14 h-14 rounded-2xl flex items-center justify-center text-emerald-950 mx-auto mb-5">
           <Shield className="w-6 h-6" aria-hidden="true" />
         </div>
-        <h1 className="text-2xl font-black text-white">
-          {mode === 'login' ? 'Sign In to RouteShield' : 'Create Community Account'}
+        <h1 className="text-3xl font-bold tracking-tight text-white">
+          {mode === 'login' ? 'Welcome back.' : 'Help clear the way.'}
         </h1>
-        <p className="text-xs text-slate-400">
+        <p className="text-sm leading-relaxed text-slate-400">
           {mode === 'login'
             ? 'Sign in to submit visual evidence and review accessibility warnings'
             : 'Register to contribute community evidence and verification'}
         </p>
       </div>
 
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl space-y-5">
+      <div className="surface p-6 sm:p-8 space-y-5">
         {error && (
           <div
             className="bg-red-950/60 border border-red-800 text-red-200 p-3.5 rounded-lg text-xs flex items-center gap-2"
@@ -79,7 +79,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode }) => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+        <form onSubmit={handleSubmit} className="space-y-5 text-sm">
           {mode === 'register' && (
             <div>
               <label htmlFor="name-input" className="text-slate-300 font-semibold block mb-1">
@@ -155,7 +155,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode }) => {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg shadow-md transition-colors flex items-center justify-center gap-2 pt-2"
+            className="primary-button w-full"
           >
             {mode === 'login' ? (
               <>

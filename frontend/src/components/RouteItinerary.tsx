@@ -31,7 +31,7 @@ export const RouteItinerary: React.FC<RouteItineraryProps> = ({ plan }) => {
   const isDetour = route.distanceDifferenceMeters > 0;
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl space-y-5">
+    <div className="surface p-5 sm:p-6 space-y-5">
       {/* Route Header Metrics */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
         <div>
@@ -102,7 +102,7 @@ export const RouteItinerary: React.FC<RouteItineraryProps> = ({ plan }) => {
       {/* Step-by-step Text Itinerary */}
       <div>
         <h3 className="text-sm font-semibold text-slate-200 mb-3 flex items-center justify-between">
-          <span>Turn-by-Turn Text Itinerary</span>
+          <span>Your text itinerary</span>
           <span className="text-xs text-slate-400 font-normal">
             {route.itinerary.length} segment{route.itinerary.length === 1 ? '' : 's'}
           </span>
@@ -127,7 +127,7 @@ export const RouteItinerary: React.FC<RouteItineraryProps> = ({ plan }) => {
                 <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs text-slate-400">
                   <span className="inline-flex items-center gap-1 bg-slate-800/70 px-2 py-0.5 rounded text-[11px]">
                     <Check className="w-3 h-3 text-emerald-400" aria-hidden="true" />
-                    <span>{step.stepFreeStatus === 'YES' ? 'Step-free' : 'Not step-free'}</span>
+                    <span>{step.stepFreeStatus === 'YES' ? 'Step-free' : step.stepFreeStatus === 'UNKNOWN' ? 'Access unknown' : 'Not step-free'}</span>
                   </span>
 
                   {step.hasSteps && (
