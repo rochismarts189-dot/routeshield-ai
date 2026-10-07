@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build artifacts
+dist/
+build/
+coverage/
+*.log
+
+# Environment variables (keep all keys and secrets out of version control)
+.env
+.env.local
+.env.*.local
+backend/.env
+frontend/.env
+backend/.env.production
+frontend/.env.production
+
+# OS files
+.DS_Store
+Thumbs.db
