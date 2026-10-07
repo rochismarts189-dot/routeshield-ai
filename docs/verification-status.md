@@ -3,7 +3,7 @@
 ## Passed
 
 - Backend TypeScript production build on Node 22.22.0; strict checking retained.
-- Backend: 29 automated tests, including authentication boundaries, evidence policy, Gemini response validation, verified TLS configuration, exact CORS and HTTP integration.
+- Backend: 30 automated tests, including authentication boundaries, evidence policy, Gemini response validation, verified TLS configuration, exact CORS and HTTP integration.
 - Deterministic routing expectations: 460m baseline; B-C blocked general 620m; B-C blocked step-free 740m; B-C plus G-H blocked step-free NO_ROUTE; clearing restores 460m.
 - Frontend production build and 12 tests, including warning/alternative presentation, unverified distinction, precautionary avoidance, NO_ROUTE, cleared/dismissed incidents and stale-route prevention.
 - Real Supabase connection with its official CA and certificate verification enabled; migrations applied; 8 nodes / 10 edges; evidence bucket verified private.
@@ -14,7 +14,7 @@
 
 ## Live AI check remains blocked
 
-The configured `gemini-2.5-flash` model returned HTTP 404 for this account. Replacement model `gemini-3.8-flash` is configured; Google's official documentation supports image input and structured outputs. Actual image requests returned HTTP 503 / UNAVAILABLE (“high demand”), including a normalized real licensed obstruction photograph. Other available model checks also returned 503.
+The configured `gemini-2.5-flash` model returned HTTP 404 for this account. Replacement model `gemini-3.8-flash` is configured; Google's official documentation supports image input and structured outputs. Actual image requests returned HTTP 503 / UNAVAILABLE (“high demand”), including a normalized real licensed obstruction photograph. Other available model checks also returned 503. A production Render upload of the real photograph failed with provider statuses 503 and then 504, confirmed in Render logs. The image nevertheless persisted in private storage, reconciled into B-C's active incident and was rejected as a duplicate on resubmission. Signed image access returned 200; unsigned public-bucket access was denied. Both routing profiles returned the 460m baseline with an explicit unverified B-C warning, without inventing a confirmed block or detour.
 
 Consequently, **successful live image analysis and the complete production obstruction → confirmed incident → alternative route demonstration have not passed yet**. Automated policy and route tests are not a substitute for that check. Do not claim the application is completely verified until an actual provider response passes validation, persists and supports the required verification action.
 

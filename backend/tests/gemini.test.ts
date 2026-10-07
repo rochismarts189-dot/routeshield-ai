@@ -47,4 +47,9 @@ describe('Real provider integration contract', () => {
     expect(result.errorCode).toBe('MODEL_UNAVAILABLE');
     expect(result.success).toBe(false); expect(model.generate.mock.calls.length).toBe(1);
   });
+  it('identifies a provider gateway timeout without accepting evidence', async () => {
+    model.generate.mockRejectedValue(Object.assign(new Error('Deadline exceeded'), { status: 504 }));
+    const result = await analyzeEvidencePhoto(input);
+    expect(result.errorCode).toBe('TIMEOUT'); expect(result.analysis).toBeNull();
+  });
 });

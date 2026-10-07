@@ -122,7 +122,7 @@ export async function analyzeEvidencePhoto(
     }
   }
 
-  const errorCode = lastError?.name === 'TimeoutError' || lastError?.name === 'AbortError' || lastError?.message?.includes('timed out')
+  const errorCode = lastError?.status === 504 || lastError?.name === 'TimeoutError' || lastError?.name === 'AbortError' || lastError?.message?.includes('timed out')
     ? 'TIMEOUT'
     : lastError?.status === 503 ? 'PROVIDER_UNAVAILABLE'
     : lastError?.status === 404 ? 'MODEL_UNAVAILABLE'
