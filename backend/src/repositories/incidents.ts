@@ -29,10 +29,17 @@ export async function lockEdgeRow(client: pg.PoolClient, edgeId: string): Promis
 }
 
 export async function findActiveIncidentByEdgeId(
-  clientOrPool: { query: (text: string, params?: any[]) => Promise<any> },
+  clientOrPool: any,
   edgeId: string
 ): Promise<IncidentRecord | null> {
-  const res = await (clientOrPool as any).query(
+  const doQuery =
+    typeof clientOrPool === 'function'
+      ? clientOrPool
+      : clientOrPool && typeof clientOrPool.query === 'function'
+      ? (text: string, params?: any[]) => clientOrPool.query(text, params)
+      : query;
+
+  const res = await doQuery(
     `SELECT i.*, e.name as edge_name
      FROM routeshield.incidents i
      JOIN routeshield.edges e ON i.edge_id = e.id

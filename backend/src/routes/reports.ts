@@ -6,7 +6,7 @@ import { handleUpload } from '../middleware/upload.js';
 import { validateBody } from '../middleware/validate.js';
 import { createReportSchema, excludeReportSchema } from '../schemas/report.js';
 import { processAndNormalizePhoto } from '../services/evidence.js';
-import { uploadEvidencePhoto } from '../config/storage.js';
+import { uploadEvidencePhoto, getEvidencePhotoBuffer } from '../config/storage.js';
 import { analyzeEvidencePhoto } from '../services/gemini.js';
 import {
   findActiveIncidentByEdgeId,
@@ -262,10 +262,10 @@ router.post('/:id/retry-analysis', requireAuth, async (req, res, next) => {
     const incident = await findIncidentById(report.incident_id);
     const edge = incident ? await getEdgeById(incident.edge_id) : null;
 
-    // Retry Gemini inference
-    // Note: in local mock/fallback or storage fetch
+    // Retry Gemini inference by retrieving stored evidence photo buffer
+    const storedBuffer = await getEvidencePhotoBuffer(report.photo_key);
     const analysisResult = await analyzeEvidencePhoto({
-      imageBuffer: Buffer.alloc(0), // If storage client is configured or fallback
+      imageBuffer: storedBuffer || Buffer.alloc(0),
       mimeType: report.content_type,
       edgeLabel: edge?.name || 'Pedestrian Link',
       claim: report.claim,

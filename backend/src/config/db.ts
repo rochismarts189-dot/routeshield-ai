@@ -1,15 +1,28 @@
+import fs from 'fs';
+import path from 'path';
 import pg from 'pg';
+import { PGlite } from '@electric-sql/pglite';
 import { env } from './env.js';
 
 const { Pool } = pg;
 
 let pool: pg.Pool | null = null;
+let pgliteInstance: PGlite | null = null;
+let pgliteInitPromise: Promise<PGlite> | null = null;
+
+export function hasConfiguredDatabaseUrl(): boolean {
+  return Boolean(
+    env.DATABASE_URL &&
+    !env.DATABASE_URL.includes('your-db-password') &&
+    !env.DATABASE_URL.includes('your-project')
+  );
+}
 
 export function getPool(): pg.Pool {
   if (pool) return pool;
 
-  if (!env.DATABASE_URL) {
-    throw new Error('DATABASE_URL is not set. Please configure your PostgreSQL connection string in .env');
+  if (!hasConfiguredDatabaseUrl()) {
+    throw new Error('DATABASE_URL is not configured for remote PostgreSQL connection');
   }
 
   const poolConfig: pg.PoolConfig = {
@@ -46,29 +59,96 @@ export function getPool(): pg.Pool {
   return pool;
 }
 
+async function getOrInitPGlite(): Promise<PGlite> {
+  if (pgliteInstance) return pgliteInstance;
+  if (pgliteInitPromise) return pgliteInitPromise;
+
+  pgliteInitPromise = (async () => {
+    console.log('[Database] Remote DATABASE_URL not set — initializing embedded PostgreSQL (PGlite)...');
+    const baseDir = typeof __dirname !== 'undefined' ? __dirname : process.cwd();
+    const dataDir = path.resolve(process.cwd(), '.pglite_data');
+    const db = new PGlite(dataDir);
+
+    try {
+      // Check if schema and nodes exist
+      const checkRes = await db.query(
+        "SELECT 1 FROM information_schema.tables WHERE table_schema = 'routeshield' AND table_name = 'nodes';"
+      );
+      if (checkRes.rows.length === 0) {
+        console.log('[Database] Initializing routeshield schema and demo network...');
+        const candidateRoots = [
+          path.resolve(process.cwd(), '..'),
+          process.cwd(),
+          path.resolve(baseDir, '../../..'),
+          path.resolve(baseDir, '../..'),
+        ];
+        let mig1 = '';
+        let mig2 = '';
+        for (const root of candidateRoots) {
+          const m1 = path.join(root, 'supabase', 'migrations', '0001_init.sql');
+          const m2 = path.join(root, 'supabase', 'migrations', '0002_demo_network.sql');
+          if (fs.existsSync(m1) && fs.existsSync(m2)) {
+            mig1 = m1;
+            mig2 = m2;
+            break;
+          }
+        }
+        if (mig1 && fs.existsSync(mig1)) {
+          await db.exec(fs.readFileSync(mig1, 'utf8'));
+        }
+        if (mig2 && fs.existsSync(mig2)) {
+          await db.exec(fs.readFileSync(mig2, 'utf8'));
+        }
+        console.log('[Database] Embedded PostgreSQL initialized successfully with demo network.');
+      }
+    } catch (migErr: any) {
+      console.warn('[Database] Schema verification note:', migErr?.message || migErr);
+    }
+
+    pgliteInstance = db;
+    return db;
+  })();
+
+  return pgliteInitPromise;
+}
+
 export async function query<R extends pg.QueryResultRow = any>(
   text: string,
   params?: any[]
 ): Promise<pg.QueryResult<R>> {
-  const p = getPool();
-  return p.query<R>(text, params);
+  if (hasConfiguredDatabaseUrl()) {
+    const p = getPool();
+    return p.query<R>(text, params);
+  }
+
+  const db = await getOrInitPGlite();
+  const result = await db.query(text, params);
+  return result as unknown as pg.QueryResult<R>;
 }
 
 export async function withTransaction<T>(
   callback: (client: pg.PoolClient) => Promise<T>
 ): Promise<T> {
-  const p = getPool();
-  const client = await p.connect();
-  try {
-    await client.query('BEGIN;');
-    await client.query('SET search_path TO routeshield, public;');
-    const result = await callback(client);
-    await client.query('COMMIT;');
-    return result;
-  } catch (error) {
-    await client.query('ROLLBACK;');
-    throw error;
-  } finally {
-    client.release();
+  if (hasConfiguredDatabaseUrl()) {
+    const p = getPool();
+    const client = await p.connect();
+    try {
+      await client.query('BEGIN;');
+      await client.query('SET search_path TO routeshield, public;');
+      const result = await callback(client);
+      await client.query('COMMIT;');
+      return result;
+    } catch (error) {
+      await client.query('ROLLBACK;');
+      throw error;
+    } finally {
+      client.release();
+    }
   }
+
+  const db = await getOrInitPGlite();
+  return db.transaction(async (tx) => {
+    return callback(tx as any);
+  }) as Promise<T>;
 }
+

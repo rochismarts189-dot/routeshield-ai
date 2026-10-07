@@ -64,3 +64,21 @@ export async function getSignedPhotoUrl(
     return `/placeholder-evidence/${key}`;
   }
 }
+
+export async function getEvidencePhotoBuffer(key: string): Promise<Buffer | null> {
+  const client = getStorageClient();
+  if (client) {
+    const { data, error } = await client.storage
+      .from(env.SUPABASE_STORAGE_BUCKET)
+      .download(key);
+
+    if (error || !data) {
+      return null;
+    }
+    const arrayBuffer = await data.arrayBuffer();
+    return Buffer.from(arrayBuffer);
+  } else {
+    const item = memoryStore.get(key);
+    return item ? item.buffer : null;
+  }
+}

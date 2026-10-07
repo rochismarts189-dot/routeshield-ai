@@ -201,6 +201,22 @@ router.post(
         });
         return;
       }
+
+      if (
+        err.message?.includes('Clearing requires') ||
+        err.message?.includes('Dismissal is only') ||
+        err.message?.includes('At least one profile') ||
+        err.message?.includes('Unsupported moderation action')
+      ) {
+        res.status(400).json({
+          error: {
+            code: 'INVALID_MODERATION_ACTION',
+            message: err.message,
+          },
+        });
+        return;
+      }
+
       next(err);
     }
   }
