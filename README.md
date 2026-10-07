@@ -24,6 +24,8 @@ The planner compares the normal route and recommended route from the existing ba
 
 Check [the demo script](docs/demo-script.md) and [verification status](docs/verification-status.md) before presenting. A healthy API or configured AI key alone does not prove successful live inference.
 
+[Optional Google Maps setup](docs/google-maps-setup.md) contains the required APIs, separate key restrictions, credential placement and the opt-in `npm run maps:check` command. This prepares credentials; real navigation and real-location incident matching are not yet implemented.
+
 ## The Problem
 
 Temporary obstructions (construction barriers, scaffolding, parked vehicles, fallen debris) can make a familiar pedestrian route completely unusable for individuals relying on step-free access.

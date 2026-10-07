@@ -2,6 +2,8 @@
 
 Deploy **Render first**, then **Vercel**. Render is the API origin; Vercel is the main public demo origin. Supabase provides PostgreSQL and private evidence storage. Do not route both through a third host.
 
+Optional Google Maps preparation is documented in [Google Maps setup](docs/google-maps-setup.md). The current demo does not require Maps credentials. Do not activate real navigation until provider credentials and genuine real-location incident matching are verified.
+
 ## 1. Supabase
 
 Use the existing RouteShield project (confirmed dashboard reference: `iicfsfygenrmznzefxpb`) or the project chosen by its owner. Do not use unrelated connected projects.

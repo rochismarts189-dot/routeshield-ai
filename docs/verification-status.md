@@ -19,3 +19,9 @@ The configured `gemini-2.5-flash` model returned HTTP 404 for this account. Repl
 Consequently, **successful live image analysis and the complete production obstruction → confirmed incident → alternative route demonstration have not passed yet**. Automated policy and route tests are not a substitute for that check. Do not claim the application is completely verified until an actual provider response passes validation, persists and supports the required verification action.
 
 The licensed historical photograph's provenance is in `demo/fixtures/provenance.md`; it is not a current Maple Ward observation. Reopening still requires actual qualifying clear evidence and authorized whole-segment attestation. Do not relax policy to make the demo pass.
+
+The final production retry after commit `ffb11f1` also failed with `TIMEOUT`, using `gemini-3.8-flash`; the report stayed UNVERIFIED and both profiles retained the 460m route with a before-travel warning. Render and Vercel deployed that commit successfully, and the public browser showed the actual unverified status and photo-evidence link.
+
+## Optional Google Maps preparation
+
+Credential templates, account-owner instructions and an opt-in `npm run maps:check` command are prepared in `docs/google-maps-setup.md`. The check correctly stops without a provider request when credentials/addresses are missing. No Maps keys were created, billing was not configured, and live Maps requests have not been verified. Real navigation and real-location incident matching remain unimplemented; Maple Ward is preserved. Both builds and the existing 30 backend / 12 frontend tests passed again after setup preparation.

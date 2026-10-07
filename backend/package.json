@@ -10,7 +10,8 @@
     "test": "vitest run",
     "create-moderator": "tsx scripts/create-moderator.ts",
     "migrate": "tsx scripts/migrate.ts",
-    "smoke": "tsx scripts/smoke.ts"
+    "smoke": "tsx scripts/smoke.ts",
+    "maps:check": "node scripts/check-google-maps.mjs"
   },
   "dependencies": {
     "@google/genai": "2.27.0",
