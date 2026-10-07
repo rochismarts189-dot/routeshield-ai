@@ -19,16 +19,15 @@ export const RouteItinerary: React.FC<RouteItineraryProps> = ({ plan }) => {
         <h3 className="font-bold text-lg text-white mb-2">No Suitable Route Found</h3>
         <p className="text-sm max-w-lg mx-auto mb-4">{plan.explanation}</p>
         <div className="text-xs text-amber-300/80 bg-amber-900/30 p-3 rounded-lg border border-amber-800/50 max-w-md mx-auto text-left">
-          <strong>Accessibility Notice:</strong> RouteShield prioritizes safety and profile
-          constraints over offering inaccessible segments. Stairs and unverified barriers are excluded
-          for the Step-Free profile.
+          <strong>Accessibility Notice:</strong> Step-Free excludes stairs, unknown access and
+          obstructions covered by the existing avoidance policy. It does not certify physical safety.
         </div>
       </div>
     );
   }
 
   const { route, baselineDistanceMeters } = plan;
-  const isDetour = route.distanceDifferenceMeters > 0;
+  const isDetour = route.edgeIds.join(',') !== plan.baselineEdgeIds.join(',');
 
   return (
     <div className="surface p-5 sm:p-6 space-y-5">
@@ -36,7 +35,7 @@ export const RouteItinerary: React.FC<RouteItineraryProps> = ({ plan }) => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
         <div>
           <span className="text-xs uppercase tracking-wider text-emerald-400 font-semibold">
-            {plan.profile === 'STEP_FREE' ? 'Step-Free Pedestrian Route' : 'General Walking Route'}
+            {isDetour ? 'Recommended alternative' : 'Normal route'} · {plan.profile === 'STEP_FREE' ? 'Step-Free' : 'General Walk'}
           </span>
           <h2 className="text-xl font-bold text-white flex items-center gap-2 mt-0.5">
             <span>{plan.originName}</span>

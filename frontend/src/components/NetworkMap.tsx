@@ -7,6 +7,8 @@ interface NetworkMapProps {
   incidents?: IncidentSummary[];
   highlightEdgeIds?: string[];
   highlightNodeIds?: string[];
+  baselineEdgeIds?: string[];
+  routeLabel?: string;
   selectedEdgeId?: string;
   onSelectEdge?: (edgeId: string) => void;
   onSelectNode?: (nodeId: string) => void;
@@ -18,6 +20,8 @@ export const NetworkMap: React.FC<NetworkMapProps> = ({
   incidents = [],
   highlightEdgeIds = [],
   highlightNodeIds = [],
+  baselineEdgeIds = [],
+  routeLabel = 'Recommended route',
   selectedEdgeId,
   onSelectEdge,
   onSelectNode,
@@ -70,6 +74,7 @@ export const NetworkMap: React.FC<NetworkMapProps> = ({
             if (!from || !to) return null;
 
             const isRouteEdge = highlightEdgeIds.includes(edge.id);
+            const isBaselineOnly = baselineEdgeIds.includes(edge.id) && !isRouteEdge;
             const isSelected = selectedEdgeId === edge.id;
             const inc = incidentMap.get(edge.id);
             const isBlocked = inc && inc.status === 'CONFIRMED_BLOCKED';
@@ -86,6 +91,8 @@ export const NetworkMap: React.FC<NetworkMapProps> = ({
               strokeColor = '#64748b'; // slate-500
               strokeDasharray = '2 2';
             }
+
+            if (isBaselineOnly) strokeDasharray = '8 5';
 
             if (isUnverified) {
               strokeColor = '#eab308'; // yellow-500
@@ -104,7 +111,7 @@ export const NetworkMap: React.FC<NetworkMapProps> = ({
               strokeDasharray = 'none';
             }
 
-            if (isSelected) {
+            if (isSelected && !isBlocked && !isUnverified) {
               strokeColor = '#38bdf8'; // sky-400
               strokeWidth = 5;
             }
@@ -127,7 +134,7 @@ export const NetworkMap: React.FC<NetworkMapProps> = ({
                 }}
                 aria-label={`Walkway segment ${edge.id}: ${edge.name}, length ${edge.length_m} meters${
                   edge.has_steps ? ', contains stairs' : ''
-                }${isBlocked ? ', confirmed blocked' : ''}`}
+                }${isBlocked ? ', confirmed blocked' : isUnverified ? ', unverified obstruction report' : ''}${isRouteEdge ? `, ${routeLabel}` : isBaselineOnly ? ', original route' : ''}`}
               >
                 {/* Thick invisible line for easier click detection */}
                 <line
@@ -153,7 +160,7 @@ export const NetworkMap: React.FC<NetworkMapProps> = ({
                 />
 
                 {/* Edge distance & hazard badge at midpoint */}
-                <rect x={midX - 20} y={midY - 11} width={40} height={22} rx={7} fill="#102131" stroke={strokeColor} strokeWidth={1} />
+                <rect x={midX - (isUnverified || isBlocked ? 30 : 20)} y={midY - 11} width={isUnverified || isBlocked ? 60 : 40} height={22} rx={7} fill="#102131" stroke={isBlocked ? '#ef4444' : isUnverified ? '#eab308' : strokeColor} strokeWidth={1} />
                 <text
                   x={midX}
                   y={midY + 3.5}
@@ -162,7 +169,7 @@ export const NetworkMap: React.FC<NetworkMapProps> = ({
                   textAnchor="middle"
                   className="font-mono font-medium pointer-events-none"
                 >
-                  {isBlocked ? 'Blocked' : edge.has_steps ? 'Stairs' : `${edge.length_m}m`}
+                  {isBlocked ? 'BLOCKED' : isUnverified ? 'REPORTED' : edge.has_steps ? 'Stairs' : `${edge.length_m}m`}
                 </text>
               </g>
             );
@@ -233,7 +240,7 @@ export const NetworkMap: React.FC<NetworkMapProps> = ({
       <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 text-xs text-slate-300">
         <div className="flex items-center gap-2">
           <span className="w-5 h-1.5 bg-emerald-500 rounded-full inline-block" />
-          <span>Active Route</span>
+          <span>{routeLabel}</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="w-5 h-1.5 bg-slate-400 rounded-full inline-block shrink-0" />

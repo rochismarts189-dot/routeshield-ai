@@ -40,12 +40,12 @@ export async function analyzeEvidencePhoto(
   }
 
   const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
-  const modelName = env.GEMINI_MODEL || 'gemini-2.5-flash';
+  const modelName = env.GEMINI_MODEL || 'gemini-3.8-flash';
 
   const userPrompt = JSON.stringify({ selectedSegment: params.edgeLabel, reporterClaim: params.claim, description: params.description });
 
   // Up to 2 provider attempts with a bounded timeout
-  let lastError: Error | null = null;
+  let lastError: (Error & { status?: number }) | null = null;
   for (let attempt = 1; attempt <= Math.min(params.maxAttempts ?? 2, 2); attempt++) {
     try {
       await params.beforeAttempt?.();
@@ -115,16 +115,19 @@ export async function analyzeEvidencePhoto(
         errorCode: null,
         errorMessage: null,
       };
-    } catch (err: any) {
-      lastError = err;
-      console.warn(`Gemini analysis attempt ${attempt} failed`);
-      if (err.message === 'MAX_ATTEMPTS_EXCEEDED' || err.status === 401 || err.status === 403 || err.status === 429) break;
+    } catch (err: unknown) {
+      lastError = err instanceof Error ? err : new Error('Provider request failed');
+      console.warn(`Gemini analysis attempt ${attempt} failed`, { status: lastError.status ?? null });
+      if (lastError.message === 'MAX_ATTEMPTS_EXCEEDED' || [401, 403, 404, 429].includes(lastError.status ?? 0)) break;
     }
   }
 
   const errorCode = lastError?.name === 'TimeoutError' || lastError?.name === 'AbortError' || lastError?.message?.includes('timed out')
     ? 'TIMEOUT'
-    : lastError?.message?.includes('quota')
+    : lastError?.status === 503 ? 'PROVIDER_UNAVAILABLE'
+    : lastError?.status === 404 ? 'MODEL_UNAVAILABLE'
+    : lastError?.status === 401 || lastError?.status === 403 ? 'PROVIDER_AUTH_FAILURE'
+    : lastError?.status === 429 || lastError?.message?.toLowerCase().includes('quota')
     ? 'QUOTA_EXCEEDED'
     : lastError?.message === 'MAX_ATTEMPTS_EXCEEDED' ? 'MAX_ATTEMPTS_EXCEEDED' : 'SCHEMA_OR_PROVIDER_FAILURE';
 

@@ -6,7 +6,7 @@ import { Shield, Navigation, Camera, LogOut, Layers, ArrowUpRight, Info } from '
 const navigation = [
   { path: '/plan', label: 'Route Planner', icon: Navigation },
   { path: '/incidents', label: 'Incidents', icon: Layers },
-  { path: '/report', label: 'Report Photo', icon: Camera },
+  { path: '/report', label: 'Report Obstruction', icon: Camera },
 ];
 
 export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -19,7 +19,7 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-wrap gap-4 items-center justify-between">
           <Link to="/plan" className="flex items-center gap-3 rounded-xl" aria-label="RouteShield AI Home">
             <span className="brand-mark w-11 h-11 rounded-xl flex items-center justify-center text-emerald-950"><Shield className="w-6 h-6" aria-hidden="true" /></span>
-            <span><span className="block text-xl font-bold tracking-tight">RouteShield <span className="text-emerald-300">AI</span></span><span className="block text-xs text-slate-400 tracking-wide">Every journey deserves a clear path.</span></span>
+            <span><span className="block text-xl font-bold tracking-tight">RouteShield <span className="text-emerald-300">AI</span></span><span className="block text-xs text-slate-400 tracking-wide">Community reports. Warnings before travel.</span></span>
           </Link>
           <nav className="order-3 w-full md:order-none md:w-auto flex gap-1 rounded-xl bg-slate-900/80 p-1 border border-slate-800" aria-label="Main Navigation">
             {navigation.map(({ path, label, icon: Icon }) => {

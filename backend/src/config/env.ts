@@ -15,7 +15,7 @@ export const envSchema = z.object({
   JWT_ISSUER: z.string().default('routeshield-api'),
   JWT_AUDIENCE: z.string().default('routeshield-web'),
   GEMINI_API_KEY: optionalSetting,
-  GEMINI_MODEL: z.string().trim().min(1).default('gemini-2.5-flash'),
+  GEMINI_MODEL: z.string().trim().min(1).default('gemini-3.8-flash'),
   SUPABASE_URL: optionalSetting, SUPABASE_SECRET_KEY: optionalSetting,
   SUPABASE_STORAGE_BUCKET: z.string().default('evidence'),
 }).superRefine((data, ctx) => {

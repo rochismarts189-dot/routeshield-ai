@@ -1,12 +1,28 @@
 # RouteShield AI
 
-> **Community evidence becomes explainable, step-free pedestrian route warnings and alternatives.**
+> **Someone reports an obstruction once. The next traveler is warned before starting and can take an alternative.**
 
 [![CI](https://github.com/rochismarts189-dot/routeshield-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/rochismarts189-dot/routeshield-ai/actions/workflows/ci.yml)
 [![Theme: AI for Accessibility & Inclusion](https://img.shields.io/badge/theme-AI%20for%20Accessibility%20%26%20Inclusion-blue.svg)]()
 [![Stack: React + Node/Express + Supabase + Gemini](https://img.shields.io/badge/stack-React%20%7C%20Node%20%7C%20Supabase%20%7C%20Gemini-emerald.svg)]()
 
 ---
+
+## Public application
+
+- Frontend / hackathon URL: https://routeshield-ai-one.vercel.app
+- Express backend: https://routeshield-backend.onrender.com
+- Readiness: https://routeshield-backend.onrender.com/api/ready
+
+The frontend is deployed from the committed frontend source using Vercel's source-upload API; this Vercel account could not import the GitHub repository. GitHub remains the source of truth. Future source changes require redeployment until repository access is connected.
+
+## Core demo story
+
+**Photo evidence → real Gemini analysis → incident verification → warning before travel → deterministic alternative.**
+
+The planner compares the normal route and recommended route from the existing backend. Affected segments link directly to photo evidence, Gemini observations and verification history. Unverified reports remain unverified; they may generate a warning or precautionary step-free avoidance according to the existing policy. Confirmation is required for the confirmed-blocked demo.
+
+Check [the demo script](docs/demo-script.md) and [verification status](docs/verification-status.md) before presenting. A healthy API or configured AI key alone does not prove successful live inference.
 
 ## The Problem
 

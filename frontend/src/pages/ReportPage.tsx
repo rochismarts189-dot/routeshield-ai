@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { toLocalDateTimeInput } from '../lib/time';
 import { api } from '../lib/api';
+import { analysisFailureMessage } from '../lib/analysis';
 import { Edge } from '../types';
 import {
   Camera,
@@ -35,6 +36,7 @@ export const ReportPage: React.FC = () => {
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [failedAnalysisIncidentId, setFailedAnalysisIncidentId] = useState<string | null>(null);
+  const [failedAnalysisCode, setFailedAnalysisCode] = useState<string | null>(null);
 
   useEffect(() => {
     api
@@ -63,6 +65,7 @@ export const ReportPage: React.FC = () => {
     e.preventDefault();
     setError(null);
     setFailedAnalysisIncidentId(null);
+    setFailedAnalysisCode(null);
 
     if (!isAuthenticated) {
       navigate(`/login?redirect=${encodeURIComponent(`/report?${searchParams.toString()}`)}`);
@@ -97,9 +100,10 @@ export const ReportPage: React.FC = () => {
       if (result.analysisStatus === 'FAILED') {
         // Report persisted as UNVERIFIED, but AI analysis failed
         setFailedAnalysisIncidentId(result.incidentId);
+        setFailedAnalysisCode(result.errorCode);
       } else {
         // Successfully analyzed and evaluated
-        navigate(`/incidents/${result.incidentId}`);
+        navigate(`/incidents/${result.incidentId}?reportId=${result.reportId}`);
       }
     } catch (err: any) {
       setError(err.message || 'Report submission failed. Please try again.');
@@ -113,12 +117,14 @@ export const ReportPage: React.FC = () => {
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Page Title */}
       <div>
-        <p className="eyebrow mb-3 flex items-center gap-2"><Camera className="w-4 h-4" aria-hidden="true" />Community evidence</p>
-        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">Make a barrier <span className="text-emerald-300">visible.</span></h1>
+        <p className="eyebrow mb-3 flex items-center gap-2"><Camera className="w-4 h-4" aria-hidden="true" />Report Obstruction</p>
+        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">Your photo. <span className="text-emerald-300">Their warning.</span></h1>
         <p className="text-base leading-relaxed text-slate-400 mt-3">
-          Share what you see. Gemini interprets your photo, and the community helps verify how it affects a pedestrian journey.
+          Encountered an obstruction? Report the affected path. Gemini analyzes your photo, and future travelers see a warning before they reach it. Route changes follow the verification policy.
         </p>
       </div>
+
+      <ol className="surface p-4 grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs text-slate-300" aria-label="From your report to another traveler’s route">{['Photo evidence', 'Gemini analysis', 'Incident + verification', 'Warning before travel', 'Alternative route'].map((step, i) => <li key={step}><span className="text-emerald-300 font-mono mr-1.5">{i + 1}.</span>{step}</li>)}</ol>
 
       {!isAuthenticated && (
         <div className="bg-amber-950/40 border border-amber-600/40 p-4 rounded-xl text-amber-200 text-sm flex items-center justify-between gap-3">
@@ -140,11 +146,10 @@ export const ReportPage: React.FC = () => {
         <div className="bg-amber-950/60 border border-amber-600 p-5 rounded-xl text-amber-200 space-y-3">
           <div className="flex items-center gap-2 text-white font-bold text-base">
             <AlertTriangle className="w-5 h-5 text-amber-400" aria-hidden="true" />
-            <span>Report Saved — AI Analysis Pending/Failed</span>
+            <span>Report saved — AI analysis did not complete</span>
           </div>
           <p className="text-xs text-amber-300">
-            Your photograph has been safely persisted to private storage and attached to the incident
-            as unverified evidence. However, Gemini multimodal visual inference was unable to finish.
+            {analysisFailureMessage(failedAnalysisCode)} This report cannot qualify as analyzed evidence until inference succeeds.
           </p>
           <div className="pt-2">
             <Link
@@ -168,6 +173,31 @@ export const ReportPage: React.FC = () => {
             <span>{error}</span>
           </div>
         )}
+
+        {/* 2. Pedestrian Segment Selection */}
+        <div>
+          <label htmlFor="segment-select" className="text-xs font-semibold text-slate-300 block mb-1.5">
+            Pedestrian Segment Location *
+          </label>
+          <select
+            id="segment-select"
+            disabled={edges.length === 0 || Boolean(searchParams.get('incidentId'))}
+            value={edges.length ? selectedEdgeId : ''}
+            onChange={(e) => setSelectedEdgeId(e.target.value)}
+            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          >
+            {!edges.length && <option value="">Segments unavailable — retry the connection</option>}
+            {edges.length > 0 && !edges.some(edge => edge.id === selectedEdgeId) && <option value={selectedEdgeId}>Choose a known segment</option>}
+            {edges.map((e) => (
+              <option key={e.id} value={e.id}>
+                Segment {e.id}: {e.name} ({e.length_m}m{e.has_steps ? ', contains stairs' : ''})
+              </option>
+            ))}
+          </select>
+          <p className="text-[11px] text-slate-400 mt-1">
+            Choose the known walkway shown in your photo. Its location is reported by you and isn’t verified from the image.
+          </p>
+        </div>
 
         {/* 1. Photo Upload & Preview */}
         <div>
@@ -215,31 +245,6 @@ export const ReportPage: React.FC = () => {
               </label>
             )}
           </div>
-        </div>
-
-        {/* 2. Pedestrian Segment Selection */}
-        <div>
-          <label htmlFor="segment-select" className="text-xs font-semibold text-slate-300 block mb-1.5">
-            Pedestrian Segment Location *
-          </label>
-          <select
-            id="segment-select"
-            disabled={edges.length === 0 || Boolean(searchParams.get('incidentId'))}
-            value={edges.length ? selectedEdgeId : ''}
-            onChange={(e) => setSelectedEdgeId(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          >
-            {!edges.length && <option value="">Segments unavailable — retry the connection</option>}
-            {edges.length > 0 && !edges.some(edge => edge.id === selectedEdgeId) && <option value={selectedEdgeId}>Choose a known segment</option>}
-            {edges.map((e) => (
-              <option key={e.id} value={e.id}>
-                Segment {e.id}: {e.name} ({e.length_m}m{e.has_steps ? ', contains stairs' : ''})
-              </option>
-            ))}
-          </select>
-          <p className="text-[11px] text-slate-400 mt-1">
-            Choose the known walkway shown in your photo. Its location is reported by you and isn’t verified from the image.
-          </p>
         </div>
 
         {/* 3. Reporter Claim & Description */}

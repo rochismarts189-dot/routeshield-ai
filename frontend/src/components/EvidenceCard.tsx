@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ReportItem } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
+import { analysisFailureMessage } from '../lib/analysis';
 import {
   Sparkles,
   AlertTriangle,
@@ -180,7 +181,7 @@ export const EvidenceCard: React.FC<EvidenceCardProps> = ({ report, onRefresh })
                 {/* Subjective Confidence */}
                 <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-800">
                   <span>
-                    Model: <code className="text-slate-300">{report.analysisModel || 'gemini-2.5-flash'}</code>
+                    Model: <code className="text-slate-300">{report.analysisModel || 'Not recorded'}</code>
                   </span>
                   <span>
                     AI Confidence Estimate: <strong>{Math.round(analysis.confidence * 100)}%</strong>
@@ -194,7 +195,7 @@ export const EvidenceCard: React.FC<EvidenceCardProps> = ({ report, onRefresh })
                   <span>Inference Failed ({report.analysisErrorCode || 'ERROR'})</span>
                 </div>
                 <p className="text-slate-400">
-                  The visual model was unable to complete inspection. Report remains saved as unverified evidence.
+                  {analysisFailureMessage(report.analysisErrorCode)}
                 </p>
                 {report.analysisAttempts < 3 && (isModerator || user?.id === report.reporterId) && (
                   <button

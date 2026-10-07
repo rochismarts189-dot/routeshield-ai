@@ -1,6 +1,8 @@
 # RouteShield AI — Demonstration Script (4-Minute Walkthrough)
 
-This script follows the exact demonstration flow specified in the project requirements.
+Core message: **“Someone reports an obstruction once, and everyone planning that route afterward is warned before they encounter it and can take an alternative route.”**
+
+Preflight the live provider first. See `verification-status.md`: a provider failure must remain visible and must not be presented as successful AI analysis. The times below assume that real inference and qualifying evidence have passed.
 
 ---
 
@@ -21,7 +23,7 @@ This script follows the exact demonstration flow specified in the project requir
 1. **Submit Visual Evidence**:
    - Log in as Community Account 1 (`user1@demo.internal`).
    - Navigate to `/report`. Select Segment `BC: Market Corner to Library Junction`.
-   - Upload your own authorized, preflight-tested obstruction photograph (the existing `demo/fixtures` JPEGs are illustrations).
+   - Upload your own authorized, preflight-tested obstruction photograph (the original barrier/walkway JPEGs are illustrations; the licensed historical fallen-tree photograph is explicitly labelled demo evidence in provenance.md).
    - Set claim to `BLOCKED`. Submit report.
 2. **Review First Report Outcome**:
    - Inspect Gemini multimodal observations on the newly created incident page (`/incidents/:id`).
@@ -35,20 +37,24 @@ This script follows the exact demonstration flow specified in the project requir
    - Log in as Community Account 2 (`user2@demo.internal`).
    - Upload a genuinely different authorized photograph to segment `BC`.
 2. **Inspect Corroboration Transition**:
-   - Refresh incident page. Status automatically updates to **`CONFIRMED_BLOCKED`**.
+   - Refresh incident page. Status updates to **`CONFIRMED_BLOCKED`** only when the actual analyses qualify; otherwise it remains UNVERIFIED. Alternatively use an authorized moderator with qualifying evidence; clearly show and name that verification step.
    - Confirmation basis displays: *"Automated community corroboration (2+ distinct accounts & photographs within 30m window)"*.
    - Check Audit Trail showing event `COMMUNITY_CORROBORATION`.
 3. **Verify Profile Detours on `/plan`**:
    - Select `GENERAL_WALK`: Detours via A-B-E-F-D (**620m**, +160m detour). Explain it uses link E-F which contains stairs.
    - Select `STEP_FREE`: Avoids stairs (E-F) and avoids unknown accessibility (F-C). Detours via A-B-G-H-D (**740m**, +280m detour).
-   - Display turn-by-turn text itinerary explaining the detour rationale.
+   - Point to the prominent **Before you travel / Obstruction ahead** panel.
+   - Show **Normal route A-B-C-D: 460m**, affected **B-C**, **Recommended alternative A-B-G-H-D: 740m**, and **Why this alternative?**
+   - Open its evidence link to demonstrate that this warning came from the first traveler's report, not a prewritten alert.
+   - Review the text itinerary and map's BLOCKED/REPORTED labels.
+   - Say: “The first traveler encountered it. The next traveler learns before starting.”
 
 ---
 
 ## Part 4: Clearance Submission & Moderator Full Check (2:30 – 3:30)
 1. **Submit Clear Photo**:
    - Submit a fresh authorized clear-passage photograph with claim `CLEAR`.
-   - Show that status updates to **`REQUIRES_REVIEW` / `DISPUTED`**, but **the route remains safely detoured**!
+   - Show that status updates to **`REQUIRES_REVIEW` / `DISPUTED`**, but **the existing obstruction avoidance remains active**!
    - Highlight the safety rule: A single camera angle does not prove the entire link is unobstructed.
 2. **Moderator Segment Attestation & Clearance**:
    - Log in as Moderator (`moderator@routeshield.internal`).

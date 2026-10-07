@@ -11,3 +11,11 @@ The original repository described them as synthetic demonstration assets and cla
 They may exercise image upload/decoding, but must be labelled illustrations in a demonstration. Do not present them as real-world evidence or expect Gemini to confirm full-width blockage or step-free clearance from them. The application sends the actual image to Gemini and preserves uncertainty; it never substitutes a predetermined result.
 
 For the live hackathon flow, use your own authorized photographs of a staged obstruction and an unobstructed passage, captured from useful angles without personal information. Map their locations explicitly onto the fictional Maple Ward network and label the mapping as a demo. Test them with real Gemini before recording the video. If evidence is insufficient, request another photo or use moderator review only when its evidence requirements are met.
+
+## Licensed real photograph for image-analysis testing
+
+`fallen-tree-path.jpg` is an unmodified historical photograph, **Footpath completely blocked by fallen trees**, by **J W Parker**. Source: [Wikimedia Commons / Geograph 3878749](https://commons.wikimedia.org/wiki/File:Footpath_completely_blocked_by_fallen_trees_-_geograph.org.uk_-_3878749.jpg). License: [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/).
+
+This is a real photograph, but it is **not a current observation in Maple Ward**. Any association with segment B-C is an explicitly fictional demo mapping; an observation time entered during a demo is simulated. Keep that provenance in the report description and the presentation. The existing illustration files do not become qualifying photographic evidence merely because this photograph has been added. Do not manufacture a second independent report by cropping or re-encoding this same image.
+
+Use only the actual validated Gemini response. Whether it supports blocking either profile is decided by the existing incident policy, not by the fixture filename or this description. This fixture does not establish whole-segment clearance or justify reopening.

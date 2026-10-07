@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { IncidentDetail } from '../types';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
@@ -22,6 +22,7 @@ import {
 export const IncidentPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { isModerator } = useAuth();
+  const [searchParams] = useSearchParams();
 
   const [incident, setIncident] = useState<IncidentDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -79,6 +80,8 @@ export const IncidentPage: React.FC = () => {
     );
   }
 
+  const submittedReport = incident.reports.find(r => r.id === searchParams.get('reportId'));
+
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       {/* Navigation Breadcrumb */}
@@ -91,6 +94,8 @@ export const IncidentPage: React.FC = () => {
           <span>Back to All Incidents</span>
         </Link>
       </div>
+
+      {submittedReport && <section className="surface border-emerald-400/30 p-5" role="status"><p className="eyebrow">Your report is now part of this incident</p><h2 className="text-lg font-semibold mt-2">{submittedReport.analysisStatus === 'COMPLETE' ? 'Photo analyzed by Gemini' : 'Photo saved; analysis not complete'}</h2><p className="text-sm text-slate-300 mt-2">See the actual image analysis below. The incident’s verification status controls whether travelers receive a warning or an alternative route.</p></section>}
 
       {/* Incident Header Card */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl space-y-4">
@@ -173,7 +178,8 @@ export const IncidentPage: React.FC = () => {
         </div>
 
         {/* Action Row */}
-        <div className="pt-2 flex justify-end">
+        <div className="pt-2 flex flex-wrap justify-end gap-3">
+          <Link to="/plan" className="secondary-button">Check route warnings before travel</Link>
           <Link
             to={`/report?edgeId=${incident.edgeId}${incident.status !== 'CLEARED' && !incident.dismissedAt ? `&incidentId=${incident.id}` : ''}`}
             className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold flex items-center gap-2 shadow transition-colors"
