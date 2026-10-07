@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type Request, type Response, type NextFunction } from 'express';
 import crypto from 'crypto';
 import rateLimit from 'express-rate-limit';
 import { requireAuth, requireModerator } from '../middleware/auth.js';
@@ -19,7 +19,7 @@ import { AppError } from '../lib/errors.js';
 const router = Router();
 const reportLimiter = rateLimit({ windowMs: 10 * 60_000, max: 10, standardHeaders: true, legacyHeaders: false,
   message: { error: { code: 'TOO_MANY_REPORTS', message: 'Please wait before submitting more evidence.' } } });
-const accountLimiter = rateLimit({ windowMs: 10 * 60_000, max: 5, keyGenerator: req => req.user!.id,
+const accountLimiter = rateLimit({ windowMs: 10 * 60_000, max: 5, keyGenerator: (req: Request) => req.user!.id,
   standardHeaders: true, legacyHeaders: false, message: { error: { code: 'TOO_MANY_REPORTS', message: 'Your evidence limit is reached. Please wait ten minutes.' } } });
 
 async function finalize(reportId: string, incidentId: string, result: AnalysisResult) {
@@ -31,7 +31,7 @@ async function finalize(reportId: string, incidentId: string, result: AnalysisRe
   });
 }
 
-router.post('/', requireAuth, reportLimiter, accountLimiter, handleUpload, async (req, res, next) => {
+router.post('/', requireAuth, reportLimiter, accountLimiter, handleUpload, async (req: Request, res: Response, next: NextFunction) => {
   let uploadedKey: string | null = null;
   let saved = false;
   try {
@@ -84,7 +84,7 @@ router.post('/', requireAuth, reportLimiter, accountLimiter, handleUpload, async
   }
 });
 
-router.post('/:id/retry-analysis', requireAuth, validateIdParam(), accountLimiter, async (req, res, next) => {
+router.post('/:id/retry-analysis', requireAuth, validateIdParam(), accountLimiter, async (req: Request, res: Response, next: NextFunction) => {
   let claimedId: string | null = null;
   try {
     const report = await findReportById(req.params.id);
@@ -110,7 +110,7 @@ router.post('/:id/retry-analysis', requireAuth, validateIdParam(), accountLimite
   }
 });
 
-router.post('/:id/exclude', requireAuth, requireModerator, validateIdParam(), validateBody(excludeReportSchema), async (req, res, next) => {
+router.post('/:id/exclude', requireAuth, requireModerator, validateIdParam(), validateBody(excludeReportSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const report = await findReportById(req.params.id);
     if (!report) throw new AppError(404, 'REPORT_NOT_FOUND', 'Report not found');

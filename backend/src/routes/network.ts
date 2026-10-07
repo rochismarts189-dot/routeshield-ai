@@ -1,9 +1,9 @@
-import { Router } from 'express';
+import { Router, type Request, type Response, type NextFunction } from 'express';
 import { getAllNodes, getAllEdges } from '../repositories/network.js';
 
 const router = Router();
 
-router.get('/', async (req, res, next) => {
+router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const [nodes, edges] = await Promise.all([
       getAllNodes(),

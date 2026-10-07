@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { type Request, type Response, type NextFunction } from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import { query } from './config/db.js';
@@ -41,7 +41,7 @@ app.use(express.json({ limit: '64kb' }));
 app.use(express.urlencoded({ extended: true, limit: '64kb' }));
 
 // Liveness & health check
-app.get('/api/health', (req, res) => {
+app.get('/api/health', (req: Request, res: Response) => {
   res.status(200).json({
     status: 'ok',
     service: 'RouteShield AI API',
@@ -51,7 +51,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // Readiness validates database migrations and private evidence storage; it does not claim a live AI inference succeeded.
-app.get('/api/ready', async (_req, res, next) => {
+app.get('/api/ready', async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const result = await query('SELECT (SELECT count(*) FROM routeshield.nodes) AS nodes, (SELECT count(*) FROM routeshield.edges) AS edges');
     if (Number(result.rows[0].nodes) !== 8 || Number(result.rows[0].edges) !== 10) throw new AppError(503, 'NETWORK_NOT_SEEDED', 'Apply the Maple Ward migrations.');
@@ -68,7 +68,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/incidents', incidentRoutes);
 app.use('/api/routes', routeRoutes);
 
-app.use((_req, res) => res.status(404).json({ error: { code: 'NOT_FOUND', message: 'API endpoint not found' } }));
+app.use((_req: Request, res: Response) => res.status(404).json({ error: { code: 'NOT_FOUND', message: 'API endpoint not found' } }));
 
 // Centralized error handling
 app.use(errorHandler);

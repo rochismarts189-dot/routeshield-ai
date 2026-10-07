@@ -1,5 +1,5 @@
 import { withTransaction } from '../config/db.js';
-import { Router } from 'express';
+import { Router, type Request, type Response, type NextFunction } from 'express';
 import { validateBody } from '../middleware/validate.js';
 import { planRouteSchema } from '../schemas/route.js';
 import { getAllNodes, getAllEdges } from '../repositories/network.js';
@@ -9,7 +9,7 @@ import { planRoute } from '../services/routing.js';
 
 const router = Router();
 
-router.post('/plan', validateBody(planRouteSchema), async (req, res, next) => {
+router.post('/plan', validateBody(planRouteSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { originId, destinationId, profile } = req.body;
 

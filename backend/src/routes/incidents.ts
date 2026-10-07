@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type Request, type Response, type NextFunction } from 'express';
 import { requireAuth, requireModerator } from '../middleware/auth.js';
 import { validateBody, validateQuery, validateIdParam } from '../middleware/validate.js';
 import { verifyIncidentSchema } from '../schemas/verification.js';
@@ -21,7 +21,7 @@ const listQuerySchema = z.object({
 });
 
 // GET /incidents - Public sanitized list
-router.get('/', validateQuery(listQuerySchema), async (req, res, next) => {
+router.get('/', validateQuery(listQuerySchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { status, edgeId } = req.query as any;
     const incidents = await listIncidents({ status, edgeId });
@@ -62,7 +62,7 @@ router.get('/', validateQuery(listQuerySchema), async (req, res, next) => {
 });
 
 // GET /incidents/:id - Public sanitized detailed incident
-router.get('/:id', validateIdParam(), async (req, res, next) => {
+router.get('/:id', validateIdParam(), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const incidentId = req.params.id;
     const incident = await findIncidentById(incidentId);
@@ -170,7 +170,7 @@ router.post(
   requireAuth,
   requireModerator,
   validateBody(verifyIncidentSchema),
-  async (req, res, next) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
       const incidentId = req.params.id as string;
       const moderatorId = req.user!.id;

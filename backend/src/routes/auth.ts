@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type Request, type Response, type NextFunction } from 'express';
 import rateLimit from 'express-rate-limit';
 import { validateBody } from '../middleware/validate.js';
 import { registerSchema, loginSchema } from '../schemas/auth.js';
@@ -40,7 +40,7 @@ const registerLimiter = rateLimit({
   },
 });
 
-router.post('/register', registerLimiter, validateBody(registerSchema), async (req, res, next) => {
+router.post('/register', registerLimiter, validateBody(registerSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email, displayName, password } = req.body;
 
@@ -86,7 +86,7 @@ router.post('/register', registerLimiter, validateBody(registerSchema), async (r
   }
 });
 
-router.post('/login', loginLimiter, validateBody(loginSchema), async (req, res, next) => {
+router.post('/login', loginLimiter, validateBody(loginSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email, password } = req.body;
 
@@ -135,7 +135,7 @@ router.post('/login', loginLimiter, validateBody(loginSchema), async (req, res, 
   }
 });
 
-router.get('/me', requireAuth, async (req, res) => {
+router.get('/me', requireAuth, async (req: Request, res: Response) => {
   res.status(200).json({
     user: req.user,
   });
