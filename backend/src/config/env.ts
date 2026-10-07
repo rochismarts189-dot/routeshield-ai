@@ -13,7 +13,7 @@ const envSchema = z.object({
   JWT_ISSUER: z.string().default('routeshield-api'),
   JWT_AUDIENCE: z.string().default('routeshield-web'),
   GEMINI_API_KEY: z.string().optional().default(''),
-  GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
+  GEMINI_MODEL: z.string().default('gemini-3.8-flash'),
   SUPABASE_URL: z.string().optional().default(''),
   SUPABASE_SECRET_KEY: z.string().optional().default(''),
   SUPABASE_STORAGE_BUCKET: z.string().default('evidence'),

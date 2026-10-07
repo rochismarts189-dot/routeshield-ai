@@ -5,8 +5,15 @@ CREATE SCHEMA IF NOT EXISTS routeshield;
 
 -- Revoke default public schema access if desired
 REVOKE ALL ON SCHEMA routeshield FROM PUBLIC;
-REVOKE ALL ON SCHEMA routeshield FROM anon;
-REVOKE ALL ON SCHEMA routeshield FROM authenticated;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+    EXECUTE 'REVOKE ALL ON SCHEMA routeshield FROM anon';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    EXECUTE 'REVOKE ALL ON SCHEMA routeshield FROM authenticated';
+  END IF;
+END $$;
 
 -- Users table
 CREATE TABLE IF NOT EXISTS routeshield.users (

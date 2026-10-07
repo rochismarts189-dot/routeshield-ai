@@ -8,9 +8,11 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "test": "vitest run",
-    "create-moderator": "tsx scripts/create-moderator.ts"
+    "create-moderator": "tsx scripts/create-moderator.ts",
+    "migrate": "tsx scripts/migrate.ts"
   },
   "dependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@google/genai": "^0.2.0",
     "@supabase/supabase-js": "^2.49.1",
     "@types/bcryptjs": "^2.4.6",
